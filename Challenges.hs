@@ -89,32 +89,6 @@ validEdges (e:es) c p | isJust t && complementingEdge e `elem` es' = validEdges 
                         Just t' = t
                         es' = getEdges t'
 
-{-
-validEdges (North:es) (x, y) p | y > 1 && isJust t && South `elem` es' = validEdges es (x, y) p
-                               | otherwise = False
-                               where
-                                t = getTileAt p (x, y-1)
-                                Just t' = t
-                                es' = getEdges t'
-validEdges (East:es) (x, y) p | x < fst (dimensions p) && isJust t && West `elem` es' = validEdges es (x, y) p
-                              | otherwise = False
-                               where
-                                t = getTileAt p (x+1, y)
-                                Just t' = t
-                                es' = getEdges t'
-validEdges (South:es) (x, y) p | y < snd (dimensions p) && isJust t && North `elem` es' = validEdges es (x, y) p
-                               | otherwise = False
-                               where
-                                t = getTileAt p (x, y+1)
-                                Just t' = t
-                                es' = getEdges t'
-validEdges (West:es) (x, y) p | x > 1 && isJust t && East `elem` es' = validEdges es (x, y) p
-                              | otherwise = False
-                               where
-                                t = getTileAt p (x-1, y)
-                                Just t' = t
-                                es' = getEdges t'
--}
 getEdges :: Tile -> [TileEdge]
 getEdges (Source es) = es
 getEdges (Sink es) = es
@@ -163,22 +137,6 @@ validRowConnections (t:ts) x y pred pred' p | pred t = connectedTo p pred' (x, y
                                             | otherwise = validRowConnections ts (x+1) y pred pred' p
 
 {-
-
-adjacentList :: Puzzle -> [[[Coordinate]]]
-adjacentList = adjacentList' 1 1 []
-
-adjacentList' :: Int -> Int -> Puzzle -> Puzzle -> [[[Coordinate]]]
-adjacentList' _ _ _ [] = []
-adjacentList' x y l p@(r:rs) = getRowAdjacents r x y (l ++ p) : adjacentList' x (y+1) (l ++ [r]) rs
-
-getRowAdjacents :: [Tile] -> Int -> Int -> Puzzle -> [[Coordinate]]
-getRowAdjacents [] _ _ _ = []
-getRowAdjacents ((Source es):ts) x y p = getAdjacent es (x, y) p : getRowAdjacents ts (x+1) y p
-getRowAdjacents ((Sink es):ts) x y p = getAdjacent es (x, y) p : getRowAdjacents ts (x+1) y p
-getRowAdjacents ((Wire es):ts) x y p = getAdjacent es (x, y) p : getRowAdjacents ts (x+1) y p
--}
-
-{-
 [ [ Wire [North,West] , Wire [North,South] , Source [North] ], [ Wire [North,West], Wire [East,West], Wire [North,East] ], [ Sink [West] , Wire [North,South] , Wire [North,West] ] ]
 -}
 
@@ -191,8 +149,8 @@ type TileRotation = (Rotation, Tile)
 
 solveCircuit :: Puzzle -> Maybe [[ Rotation ]]
 solveCircuit p | any null [trs | rs <- puzzleRots, trs <- rs] = Nothing
-                where
-                  puzzleRots = puzzleRotations p
+               where
+                 puzzleRots = puzzleRotations p
 
 rotateTile :: Rotation -> Tile -> Tile
 rotateTile R0 t = t
