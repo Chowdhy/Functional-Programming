@@ -278,19 +278,34 @@ data Bind = Discard | V Int
 
 prettyPrint :: LExpr -> String
 prettyPrint (Var x) = 'x' : show x
-prettyPrint (App l l') = '(' : prettyPrint l ++ ") " ++ prettyPrint l'
-prettyPrint (Let b l l') = "let " ++ prettyBind b ++ " = " ++ prettyPrint l ++ " in " ++ prettyPrint l'
-prettyPrint (Pair l l') = '(' : prettyPrint l ++ " , " ++ prettyPrint l' ++ ")"
-prettyPrint (Fst l) = "fst (" ++ prettyPrint l ++ ")"
-prettyPrint (Snd l) = "snd (" ++ prettyPrint l ++ ")"
-prettyPrint (Abs Discard l) = "_ " ++ prettyPrint l
-prettyPrint (Abs b (Abs Discard l)) = prettyBind b ++ " _ " ++ prettyPrint l
-prettyPrint (Abs b l) = '\\' : prettyBind b ++ " -> " ++ prettyPrint l
+prettyPrint (App e1@(Abs _ _) e2@(App _ _)) = '(' : prettyPrint e1 ++ ") (" ++ prettyPrint e2 ++ ")"
+prettyPrint (App e1@(Abs _ _) e2) = '(' : prettyPrint e1 ++ ") " ++ prettyPrint e2
+prettyPrint (App e1 e2@(App _ _)) = prettyPrint e1 ++ " (" ++ prettyPrint e2 ++ ")"
+prettyPrint (App e1 e2) = prettyPrint e1 ++ " " ++ prettyPrint e2
+prettyPrint (Let b e1@(Abs _ _) e2) = "let " ++ prettyBind b ++ " " ++ fst absPair ++ "= " ++ snd absPair ++ " in " ++ prettyPrint e2
+  where
+    absPair = prettyAbs e1
+prettyPrint (Let b e1 e2) = "let " ++ prettyBind b ++ " = " ++ prettyPrint e1 ++ " in " ++ prettyPrint e2
+prettyPrint (Pair e1 e2) = '(' : prettyPrint e1 ++ " , " ++ prettyPrint e2 ++ ")"
+prettyPrint (Fst e@(Pair _ _)) = "fst " ++ prettyPrint e
+prettyPrint (Snd e@(Pair _ _)) = "snd " ++ prettyPrint e
+prettyPrint (Fst _) = error "Invalid AST, contains Fst of unpaired expression"
+prettyPrint (Snd _) = error "Invalid AST, contains Snd of unpaired expression"
+prettyPrint e@(Abs _ _) = '\\' : fst absPair ++ "-> " ++ snd absPair
+  where
+    absPair = prettyAbs e
+
+prettyAbs :: LExpr -> (String, String)
+prettyAbs = prettyAbs' []
+
+prettyAbs' :: String -> LExpr -> (String, String)
+prettyAbs' cs (Abs b a@(Abs _ _)) = prettyAbs' (cs ++ prettyBind b ++ " ") a
+prettyAbs' cs (Abs b l) = (cs ++ prettyBind b ++ " ", prettyPrint l)
+prettyAbs' _ _ = error "Not of Abs format"
 
 prettyBind :: Bind -> String
 prettyBind Discard = "_"
 prettyBind (V x) = prettyPrint (Var x)
-
 
 -- Challenge 4 - Parsing Let Expressions
 
