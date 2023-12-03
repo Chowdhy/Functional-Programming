@@ -175,19 +175,18 @@ rotations t | es == 4 || es == 0 = [(R0, rotateTile R0 t)]
 containsEdge :: TileEdge -> Tile -> Bool
 containsEdge e t = e `elem` getEdges t
 
-satisfyAll :: [TileEdge] -> [TileRotation] -> [TileRotation]
-satisfyAll es trs = [rot | rot@(r, t') <- trs, and [not $ containsEdge e t' | e <- es]]
-
+rotationsWithout :: [TileEdge] -> [TileRotation] -> [TileRotation]
+rotationsWithout es trs = [rot | rot@(r, t) <- trs, and [not $ containsEdge e t | e <- es]]
 
 validRotations :: Coordinate -> Coordinate -> Tile -> [TileRotation]
-validRotations b@(w, l) c@(x, y) t | y == 1 && x == 1 = satisfyAll [North, West] $ rotations t
-                                   | y == 1 && x == w = [rot | rot@(r, t') <- rotations t, not (containsEdge North t') && not (containsEdge East t')]
-                                   | x == 1 && y == l = [rot | rot@(r, t') <- rotations t, not (containsEdge South t') && not (containsEdge West t')]
-                                   | x == w && y == l = [rot | rot@(r, t') <- rotations t, not (containsEdge South t') && not (containsEdge East t')]
-                                   | y == 1 = [rot | rot@(r, t') <- rotations t, not (containsEdge North t')]
-                                   | y == l = [rot | rot@(r, t') <- rotations t, not (containsEdge South t')]
-                                   | x == 1 = [rot | rot@(r, t') <- rotations t, not (containsEdge West t')]
-                                   | x == w = [rot | rot@(r, t') <- rotations t, not (containsEdge East t')]
+validRotations b@(w, l) c@(x, y) t | y == 1 && x == 1 = rotationsWithout [North, West] $ rotations t
+                                   | y == 1 && x == w = rotationsWithout [North, East] $ rotations t
+                                   | x == 1 && y == l = rotationsWithout [South, West] $ rotations t
+                                   | x == w && y == l = rotationsWithout [South, East] $ rotations t
+                                   | y == 1 = rotationsWithout [North] $ rotations t
+                                   | y == l = rotationsWithout [South] $ rotations t
+                                   | x == 1 = rotationsWithout [West] $ rotations t
+                                   | x == w = rotationsWithout [East] $ rotations t
                                    | otherwise = rotations t
 
 puzzleRotations :: Puzzle -> [[[TileRotation]]]
