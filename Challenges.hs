@@ -236,8 +236,10 @@ data Bind = Discard | V Int
 prettyPrint :: LExpr -> String
 prettyPrint (Var x) = 'x' : show x
 prettyPrint (App e1@(Abs _ _) e2@(App _ _)) = '(' : prettyPrint e1 ++ ") (" ++ prettyPrint e2 ++ ")"
-prettyPrint (App e1@(Abs _ _) e2) = '(' : prettyPrint e1 ++ ") " ++ prettyPrint e2
+prettyPrint (App e1@(Let _ _) e2@(App _ _)) = '(' : prettyPrint e1 ++ ") (" ++ prettyPrint e2 ++ ")"
 prettyPrint (App e1 e2@(App _ _)) = prettyPrint e1 ++ " (" ++ prettyPrint e2 ++ ")"
+prettyPrint (App e1@(Abs _ _) e2) = '(' : prettyPrint e1 ++ ") " ++ prettyPrint e2
+prettyPrint (App e1@(Let _ _) e2) = '(' : prettyPrint e1 ++ ") " ++ prettyPrint e2
 prettyPrint (App e1 e2) = prettyPrint e1 ++ " " ++ prettyPrint e2
 prettyPrint (Let b e1@(Abs _ _) e2) = "let " ++ prettyBind b ++ " " ++ fst absPair ++ "= " ++ snd absPair ++ " in " ++ prettyPrint e2
   where
