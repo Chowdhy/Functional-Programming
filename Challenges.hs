@@ -246,8 +246,8 @@ prettyPrint (Let b e1 e2) = "let " ++ prettyBind b ++ " = " ++ prettyPrint e1 ++
 prettyPrint (Pair e1 e2) = '(' : prettyPrint e1 ++ " , " ++ prettyPrint e2 ++ ")"
 prettyPrint (Fst e@(Pair _ _)) = "fst " ++ prettyPrint e
 prettyPrint (Snd e@(Pair _ _)) = "snd " ++ prettyPrint e
-prettyPrint (Fst _) = error "Invalid AST, contains Fst of unpaired expression"
-prettyPrint (Snd _) = error "Invalid AST, contains Snd of unpaired expression"
+prettyPrint (Fst e) = "fst (" ++ prettyPrint e ++ ")"
+prettyPrint (Snd e) = "snd (" ++ prettyPrint e ++ ")"
 prettyPrint e@(Abs _ _) = '\\' : fst absPair ++ "-> " ++ snd absPair
   where
     absPair = prettyAbs e
@@ -256,8 +256,8 @@ prettyAbs :: LExpr -> (String, String)
 prettyAbs = prettyAbs' []
 
 prettyAbs' :: String -> LExpr -> (String, String)
-prettyAbs' cs (Abs b a@(Abs _ _)) = prettyAbs' (cs ++ prettyBind b ++ " ") a
-prettyAbs' cs (Abs b l) = (cs ++ prettyBind b ++ " ", prettyPrint l)
+prettyAbs' cs (Abs b e@(Abs _ _)) = prettyAbs' (cs ++ prettyBind b ++ " ") e
+prettyAbs' cs (Abs b e) = (cs ++ prettyBind b ++ " ", prettyPrint e)
 prettyAbs' _ _ = error "Not of Abs format"
 
 prettyBind :: Bind -> String
