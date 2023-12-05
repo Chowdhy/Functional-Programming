@@ -271,6 +271,81 @@ prettyBind (V x) = prettyPrint (Var x)
 parseLetx :: String -> Maybe LExpr
 parseLetx = undefined
 
+parseBind :: String -> Bind
+parseBind xs = fst (head (parse bindD xs))
+
+{-
+parseAbs :: String -> (Bind, Bind)
+parseAbs xs = fst (head (parse absBlock xs))-}
+
+bindV :: Parser Bind
+bindV = do char 'x'
+           ds <- some digit
+           return (V (read ds))
+
+bindD :: Parser Bind
+bindD = bindV <|> do char '_'
+                     return Discard
+
+var :: Parser LExpr
+var = do char 'x'
+         ds <- some digit
+         return (Var (read ds))
+
+expr :: Parser LExpr
+expr = letExpr <|> pairExpr <|> absExpr <|> var <|> appExpr <|> bracketedExpr
+
+bracketedExpr :: Parser LExpr
+bracketedExpr = do char '('
+                   e <- expr
+                   char ')'
+                   return e
+                   <|> expr
+
+appExpr :: Parser LExpr
+appExpr = do e1 <- bracketedExpr
+             e2 <- bracketedExpr
+             return (App e1 e2)
+
+letExpr :: Parser LExpr
+letExpr = do string "let"
+             b <- bindD
+             string "="
+             e1 <- expr
+             string "in"
+             e2 <- expr
+             return (Let b e1 e2)
+
+firstVar :: Parser Bind
+firstVar = do char '\\'
+              v <- bindV
+              return v
+
+absExpr :: Parser LExpr
+absExpr = do char '\\'
+             b <- bindD
+             string "->"
+             e <- expr
+             return (Abs b e)
+
+parseLExpr :: String -> LExpr
+parseLExpr xs = fst (head (parse expr xs))             
+
+pairExpr :: Parser LExpr
+pairExpr = do char '('
+              e1 <- expr
+              char ','
+              e2 <- expr
+              char ')'
+              return (Pair e1 e2)
+
+{-
+absBlock :: Parser (Bind, Bind)
+absBlock = do b <- bindD
+              string "->"
+              a <- absBlock
+              return (b, b')-}
+
 -- Challenge 5
 -- Let Encoding in Lambda 
 
