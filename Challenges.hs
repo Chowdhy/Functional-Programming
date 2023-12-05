@@ -246,8 +246,6 @@ prettyPrint (Let b e1@(Abs _ _) e2) = "let " ++ prettyBind b ++ " " ++ fst absPa
     absPair = prettyAbs e1
 prettyPrint (Let b e1 e2) = "let " ++ prettyBind b ++ " = " ++ prettyPrint e1 ++ " in " ++ prettyPrint e2
 prettyPrint (Pair e1 e2) = '(' : prettyPrint e1 ++ ", " ++ prettyPrint e2 ++ ")"
-prettyPrint (Fst e@(Pair _ _)) = "fst " ++ prettyPrint e
-prettyPrint (Snd e@(Pair _ _)) = "snd " ++ prettyPrint e
 prettyPrint (Fst e) = "fst (" ++ prettyPrint e ++ ")"
 prettyPrint (Snd e) = "snd (" ++ prettyPrint e ++ ")"
 prettyPrint e@(Abs _ _) = '\\' : fst absPair ++ "-> " ++ snd absPair
@@ -274,6 +272,11 @@ parseLetx = undefined
 parseBind :: String -> Bind
 parseBind xs = fst (head (parse bindD xs))
 
+rmWhitespace :: String -> String
+rmWhitespace [] = []
+rmWhitespace (x:xs) | x == ' ' = rmWhitespace xs
+                    | otherwise = x : rmWhitespace xs
+
 {-
 parseAbs :: String -> (Bind, Bind)
 parseAbs xs = fst (head (parse absBlock xs))-}
@@ -293,27 +296,27 @@ var = do char 'x'
          return (Var (read ds))
 
 expr :: Parser LExpr
-expr = letExpr <|> pairExpr <|> absExpr <|> var <|> appExpr <|> bracketedExpr
+expr = letExpr <|> pairExpr <|> absExpr <|> appExpr
 
 bracketedExpr :: Parser LExpr
-bracketedExpr = do char '('
-                   e <- expr
-                   char ')'
-                   return e
-                   <|> expr
+bracketedExpr = var <|> do char '('
+                           e <- expr
+                           char ')'
+                           return e
 
 appExpr :: Parser LExpr
 appExpr = do e1 <- bracketedExpr
-             e2 <- bracketedExpr
-             return (App e1 e2)
+             e2 <- some bracketedExpr
+             return (foldl App e1 e2)
+          <|> bracketedExpr
 
 letExpr :: Parser LExpr
 letExpr = do string "let"
              b <- bindD
              string "="
-             e1 <- expr
+             e1 <- appExpr
              string "in"
-             e2 <- expr
+             e2 <- appExpr
              return (Let b e1 e2)
 
 firstVar :: Parser Bind
@@ -325,17 +328,17 @@ absExpr :: Parser LExpr
 absExpr = do char '\\'
              b <- bindD
              string "->"
-             e <- expr
+             e <- appExpr
              return (Abs b e)
 
 parseLExpr :: String -> LExpr
-parseLExpr xs = fst (head (parse expr xs))             
+parseLExpr xs = fst (head (parse expr $ rmWhitespace xs))             
 
 pairExpr :: Parser LExpr
 pairExpr = do char '('
-              e1 <- expr
+              e1 <- appExpr
               char ','
-              e2 <- expr
+              e2 <- appExpr
               char ')'
               return (Pair e1 e2)
 
