@@ -267,7 +267,7 @@ prettyBind (V x) = prettyPrint (Var x)
 -- Challenge 4 - Parsing Let Expressions
 
 parseLetx :: String -> Maybe LExpr
-parseLetx s | null e = Nothing
+parseLetx s | null e || (not . null) (snd $ head e) = Nothing
             | otherwise = Just $ fst $ head e
             where
               e = parse expr $ [c | c <- s, c /= ' ']
