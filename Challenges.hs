@@ -366,7 +366,29 @@ letEnc (Let Discard e1 e2) = LamApp (LamAbs (chooseN [encoded1, encoded2]) encod
   where
     encoded1 = letEnc e1
     encoded2 = letEnc e2
+letEnc (Pair e1 e2) = LamAbs varInt (LamApp (LamApp (LamVar varInt) encoded1) encoded2)
+  where
+    encoded1 = letEnc e1
+    encoded2 = letEnc e2
+    varInt = chooseN [encoded1, encoded2]
+letEnc (Fst e@(Pair _ _)) = LamApp (letEnc e) (LamAbs 0 (LamAbs 1 (LamVar 0)))
+letEnc (Snd e@(Pair _ _)) = LamApp (letEnc e) (LamAbs 0 (LamAbs 1 (LamVar 1)))
 
+letEnc' :: Int -> LExpr -> LamExpr
+letEnc' _ (Var x) = LamVar x
+letEnc' d (Abs (V x) e) = LamAbs x $ letEnc' d e
+letEnc' d (Abs Discard e) = LamAbs d $ letEnc' d e
+
+getNonDiscard :: LExpr -> [Int]
+getNonDiscard (Var x) = [x]
+getNonDiscard (Abs (V x) e) = x : getNonDiscard e
+getNonDiscard (Let (V x) e1 e2) = x : getNonDiscard e1 ++ getNonDiscard e2
+getNonDiscard (Abs _ e) = getNonDiscard e
+getNonDiscard (Let _ e1 e2) = getNonDiscard e1 ++ getNonDiscard e2
+getNonDiscard (App e1 e2) = getNonDiscard e1 ++ getNonDiscard e2
+getNonDiscard (Fst e) = getNonDiscard e
+getNonDiscard (Snd e) = getNonDiscard e
+getNonDiscard (Pair e1 e2) = getNonDiscard e1 ++ getNonDiscard e2
 
 chooseN :: [LamExpr] -> Int
 chooseN es = chooseN'' 0 (concatMap chooseN' es)
