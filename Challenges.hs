@@ -356,7 +356,31 @@ data LamExpr = LamVar Int | LamApp LamExpr LamExpr | LamAbs Int LamExpr
                 deriving (Eq, Show, Read)
 
 letEnc :: LExpr -> LamExpr
-letEnc =  undefined
+letEnc (Var x) = LamVar x
+letEnc (Abs (V x) e) = LamAbs x $ letEnc e
+letEnc (Abs Discard e) = LamAbs (chooseN [encoded]) encoded
+  where
+    encoded = letEnc e
+letEnc (Let (V x) e1 e2) = LamApp (LamAbs x (letEnc e2)) (letEnc e1)
+letEnc (Let Discard e1 e2) = LamApp (LamAbs (chooseN [encoded1, encoded2]) encoded2) encoded1
+  where
+    encoded1 = letEnc e1
+    encoded2 = letEnc e2
+
+
+chooseN :: [LamExpr] -> Int
+chooseN es = chooseN'' 0 (concatMap chooseN' es)
+
+chooseN' :: LamExpr -> [Int]
+chooseN' (LamVar x) = [x]
+chooseN' (LamAbs x e) = x : chooseN' e
+chooseN' (LamApp e1 e2) = chooseN' e1 ++ chooseN' e2
+
+chooseN'' :: Int -> [Int] -> Int
+chooseN'' x [] = x
+chooseN'' x xs | x `notElem` xs = x
+               | otherwise = chooseN'' (x+1) xs
+
 
 -- Challenge 6
 -- Compare Innermost Reduction for Let_x and its Lambda Encoding
