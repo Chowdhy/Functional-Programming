@@ -23,26 +23,31 @@ data TileEdge = North | East | South | West  deriving (Eq,Ord,Show,Read)
 data Tile = Source [ TileEdge ] | Sink [ TileEdge ] | Wire [ TileEdge ]  deriving (Eq,Show,Read)
 type Puzzle = [ [ Tile ] ]
 
+-- New type defined to simplify type declarations
 type Coordinate = (Int, Int)
 
 isPuzzleComplete :: Puzzle -> Bool
 isPuzzleComplete p | not $ validPuzzle p = error "Invalid puzzle"
                    | otherwise = allWiresConnected p && validSources p && validSinks p
 
+-- | Checks if a tile is valid according to the coursework tile specifications.
 validTile :: Tile -> Bool
 validTile (Source es) = not $ null (nub es)
 validTile (Sink es) = not $ null (nub es)
 validTile (Wire es) = length (nub es) /= 1
 
+-- | Checks that all rows of a puzzle are of equal length.
 equalLengthRows :: Puzzle -> Bool
 equalLengthRows [] = True
 equalLengthRows (r:[]) = True
 equalLengthRows (r1:r2:rs) | length r1 == length r2 = equalLengthRows (r2:rs)
                            | otherwise = False
 
+-- | Checks that a puzzle is valid by comparing row lengths and making sure that all individual tiles are valid.
 validPuzzle :: Puzzle -> Bool
 validPuzzle p = equalLengthRows p && all validTile [t | ts <- p, t <- ts]
 
+-- | When given a Tile's coordinates and a list of its TileEdges, returns a list of all adjacent coordinates.
 getAdjacent :: [TileEdge] -> Coordinate -> Puzzle -> [Coordinate]
 getAdjacent [] _ _ = []
 getAdjacent (North:es) c@(x, y) p = (x, y-1) : getAdjacent es c p
@@ -62,9 +67,12 @@ isWire :: Tile -> Bool
 isWire (Wire _) = True
 isWire _ = False
 
+-- | Auxiliary function that calls connectedTo' with an empty accumulator.
 connectedTo :: Puzzle -> (Tile -> Bool) -> Coordinate -> Bool
 connectedTo = connectedTo' []
 
+-- | Returns True if the Tile at the starting Coordinate is connected to a Tile that satisfies the given predicate.
+-- The function traverses the specified Puzzle until it finds a satisfying Tile, or until it loops.
 connectedTo' :: [Coordinate] -> Puzzle -> (Tile -> Bool) -> Coordinate -> Bool
 connectedTo' cs p pred c@(x, y) | isJust t && pred t' = True
                                 | c `elem` cs = False
@@ -74,12 +82,14 @@ connectedTo' cs p pred c@(x, y) | isJust t && pred t' = True
                                   Just t' = t
                                   es = getEdges t'
 
+-- | Returns the new Coordinate after traversing from the starting Coordinate via the provided TileEdge.
 coordinates :: TileEdge -> Coordinate -> Coordinate
 coordinates North (x,y) = (x,y-1)
 coordinates East (x,y) = (x+1,y)
 coordinates South (x,y) = (x, y+1)
 coordinates West (x,y) = (x-1,y)
 
+-- | Checks that the Tile at the specified Coordinate, when it has a TileEdge, is connected to a reciprocating Tile for each TileEdge.
 validEdges :: [TileEdge] -> Coordinate -> Puzzle -> Bool
 validEdges [] _ _ = True
 validEdges (e:es) c p | isJust t && complementingEdge e `elem` es' = validEdges es c p
@@ -108,29 +118,36 @@ dimensions :: Puzzle -> (Int, Int)
 dimensions [] = (0, 0)
 dimensions p@(r:rs) = (length r, length p)
 
+-- | Auxiliary function that calls allWiresConnected' from an initial state.
 allWiresConnected :: Puzzle -> Bool
 allWiresConnected = allWiresConnected' 1 1 []
 
+-- | Checks that every Tile in a Puzzle, when it has a TileEdge, is connected to a reciprocating Tile for each TileEdge.
 allWiresConnected' :: Int -> Int -> Puzzle -> Puzzle -> Bool
 allWiresConnected' _ _ _ [] = True
 allWiresConnected' x y l p@(r:rs) = rowWiresConnected r x y (l ++ p) && allWiresConnected' x (y+1) (l ++ [r]) rs
 
+-- | Checks that every Tile in a row is connected to reciprocating Tiles.
 rowWiresConnected :: [Tile] -> Int -> Int -> Puzzle -> Bool
 rowWiresConnected [] _ _ _ = True
 rowWiresConnected ((Source es):ts) x y p = validEdges es (x, y) p && rowWiresConnected ts (x+1) y p
 rowWiresConnected ((Sink es):ts) x y p = validEdges es (x, y) p && rowWiresConnected ts (x+1) y p
 rowWiresConnected ((Wire es):ts) x y p = validEdges es (x, y) p && rowWiresConnected ts (x+1) y p
 
+-- | Checks that every Sink in a Puzzle is connected to a Source.
 validSinks :: Puzzle -> Bool
 validSinks = validConnections 1 1 [] isSink isSource
 
+-- | Checks that every Source in a Puzzle is connected to a Sink.
 validSources :: Puzzle -> Bool
 validSources = validConnections 1 1 [] isSource isSink
 
+-- | When provided two Predicates, checks that every Tile satisfying the first predicate in a Puzzle is connected to a Tile satisfying the second predicate.
 validConnections :: Int -> Int -> Puzzle -> (Tile -> Bool) -> (Tile -> Bool) -> Puzzle -> Bool
 validConnections _ _ _ _ _ [] = True
 validConnections x y l pred pred' p@(r:rs) = validRowConnections r x y pred pred' (l ++ p) && validConnections x (y+1) (l ++ [r]) pred pred' rs
 
+-- When provided two Predicates, checks that Tile satisfying the first predicate in a row is connected to a Tile satisfying the second predicate.
 validRowConnections :: [Tile] -> Int -> Int -> (Tile -> Bool) -> (Tile -> Bool) -> Puzzle -> Bool
 validRowConnections [] _ _ _ _ _ = True
 validRowConnections (t:ts) x y pred pred' p | pred t = connectedTo p pred' (x, y) && validRowConnections ts (x+1) y pred pred' p
@@ -160,12 +177,14 @@ rotateTile R90 (Wire es) = Wire $ map rotateEdge90 es
 rotateTile R180 t = (rotateTile R90 . rotateTile R90) t
 rotateTile R270 t = (rotateTile R90 . rotateTile R180) t
 
+-- | Provides the TileEdge resulting from a 90 degree clockwise rotation of the original TileEdge.
 rotateEdge90 :: TileEdge -> TileEdge
 rotateEdge90 North = East
 rotateEdge90 East = South
 rotateEdge90 South = West
 rotateEdge90 West = North
 
+-- | Provides all ways of uniquely rotating a Tile.
 rotations :: Tile -> [TileRotation]
 rotations t | es == 4 || es == 0 = [(R0, rotateTile R0 t)]
             | otherwise = [(R0, rotateTile R0 t), (R90, rotateTile R90 t), (R180, rotateTile R180 t), (R270, rotateTile R270 t)]
@@ -175,9 +194,11 @@ rotations t | es == 4 || es == 0 = [(R0, rotateTile R0 t)]
 containsEdge :: TileEdge -> Tile -> Bool
 containsEdge e t = e `elem` getEdges t
 
+-- | Filters through rotations to leave rotations that do not contain any of the specified TileEdges.
 rotationsWithout :: [TileEdge] -> [TileRotation] -> [TileRotation]
 rotationsWithout es trs = [rot | rot@(r, t) <- trs, and [not $ containsEdge e t | e <- es]]
 
+-- | Provides a list of valid rotations for a Tile with respect to whether it is situated on an edge.
 validRotations :: Coordinate -> Coordinate -> Tile -> [TileRotation]
 validRotations b@(w, l) c@(x, y) t | y == 1 && x == 1 = rotationsWithout [North, West] $ rotations t
                                    | y == 1 && x == w = rotationsWithout [North, East] $ rotations t
@@ -189,22 +210,23 @@ validRotations b@(w, l) c@(x, y) t | y == 1 && x == 1 = rotationsWithout [North,
                                    | x == w = rotationsWithout [East] $ rotations t
                                    | otherwise = rotations t
 
+-- | Auxiliary function that calls puzzleRotations' from an initial state.
 puzzleRotations :: Puzzle -> [[[TileRotation]]]
 puzzleRotations p = puzzleRotations' (dimensions p) 1 p
 
+-- | Provides all valid rotations of Tiles in a Puzzle.
 puzzleRotations' :: Coordinate -> Int -> Puzzle -> [[[TileRotation]]]
 puzzleRotations' _ _ [] = []
 puzzleRotations' b y (r:rs) = rowRotations b (1, y) r : puzzleRotations' b (y+1) rs
 
+-- | Provides all valid rotations of Tiles in a row of a Puzzle.
 rowRotations :: Coordinate -> Coordinate -> [Tile] -> [[TileRotation]]
 rowRotations _ _ [] = []
 rowRotations b c@(x, y) (t:ts) = validRotations b c t : rowRotations b (x+1, y) ts
 
+-- | Returns the opposite TileEdge to the original TileEdge (an 180 degree rotation).
 complementingEdge :: TileEdge -> TileEdge
-complementingEdge North = South
-complementingEdge East = West
-complementingEdge South = North
-complementingEdge West = East
+complementingEdge = rotateEdge90 . rotateEdge90
 
 containsComplement :: [TileEdge] -> [TileEdge] -> Bool
 containsComplement [] _ = True
@@ -255,6 +277,7 @@ prettyPrint e@(Abs _ _) = '\\' : fst absPair ++ "-> " ++ snd absPair
 prettyAbs :: LExpr -> (String, String)
 prettyAbs = prettyAbs' []
 
+-- | Breaks a (nested) Abs expression into a composition of Abs expressions.
 prettyAbs' :: String -> LExpr -> (String, String)
 prettyAbs' cs (Abs b e@(Abs _ _)) = prettyAbs' (cs ++ prettyBind b ++ " ") e
 prettyAbs' cs (Abs b e) = (cs ++ prettyBind b ++ " ", prettyPrint e)
@@ -292,6 +315,7 @@ absExpr = do char '\\'
              e <- expr
              return (absAssoc bs e)
 
+-- | Returns a (nested Abs) expression based on the provided list of Binds and LExpr.
 absAssoc :: [Bind] -> LExpr -> LExpr
 absAssoc [] e = e
 absAssoc (b:bs) e = (Abs b (absAssoc bs e))
@@ -302,6 +326,7 @@ appExpr = do e1 <- some fstExpr
              return (appAssoc (e1 ++ e2))
           <|> fstExpr
 
+-- | Returns a (left associated nested App) expression based on the provided list of LExpr.
 appAssoc :: [LExpr] -> LExpr
 appAssoc (x:[]) = x
 appAssoc (x1:x2:xs) = appAssoc ((App x1 x2):xs)
