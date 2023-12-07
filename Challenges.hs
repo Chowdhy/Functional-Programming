@@ -147,7 +147,7 @@ validConnections :: Int -> Int -> Puzzle -> (Tile -> Bool) -> (Tile -> Bool) -> 
 validConnections _ _ _ _ _ [] = True
 validConnections x y l pred pred' p@(r:rs) = validRowConnections r x y pred pred' (l ++ p) && validConnections x (y+1) (l ++ [r]) pred pred' rs
 
--- When provided two Predicates, checks that Tile satisfying the first predicate in a row is connected to a Tile satisfying the second predicate.
+-- | When provided two Predicates, checks that Tile satisfying the first predicate in a row is connected to a Tile satisfying the second predicate.
 validRowConnections :: [Tile] -> Int -> Int -> (Tile -> Bool) -> (Tile -> Bool) -> Puzzle -> Bool
 validRowConnections [] _ _ _ _ _ = True
 validRowConnections (t:ts) x y pred pred' p | pred t = connectedTo p pred' (x, y) && validRowConnections ts (x+1) y pred pred' p
