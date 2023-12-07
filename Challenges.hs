@@ -356,53 +356,14 @@ data LamExpr = LamVar Int | LamApp LamExpr LamExpr | LamAbs Int LamExpr
                 deriving (Eq, Show, Read)
 
 letEnc :: LExpr -> LamExpr
-letEnc (Var x) = LamVar x
-letEnc (Abs (V x) e) = LamAbs x $ letEnc e
-letEnc (Abs Discard e) = LamAbs (chooseN [encoded]) encoded
-  where
-    encoded = letEnc e
-letEnc (Let (V x) e1 e2) = LamApp (LamAbs x (letEnc e2)) (letEnc e1)
-letEnc (Let Discard e1 e2) = LamApp (LamAbs (chooseN [encoded1, encoded2]) encoded2) encoded1
-  where
-    encoded1 = letEnc e1
-    encoded2 = letEnc e2
-letEnc (Pair e1 e2) = LamAbs varInt (LamApp (LamApp (LamVar varInt) encoded1) encoded2)
-  where
-    encoded1 = letEnc e1
-    encoded2 = letEnc e2
-    varInt = chooseN [encoded1, encoded2]
+letEnc (Var x) = LamVar (x + 1)
+letEnc (Abs (V x) e) = LamAbs (x + 1) $ letEnc e
+letEnc (Abs Discard e) = LamAbs 0 $ letEnc e
+letEnc (Let (V x) e1 e2) = LamApp (LamAbs (x + 1) (letEnc e2)) (letEnc e1)
+letEnc (Let Discard e1 e2) = LamApp (LamAbs 0 $ letEnc e2) $ letEnc e1
+letEnc (Pair e1 e2) = LamAbs 0 (LamApp (LamApp (LamVar 0) $ letEnc e1) $ letEnc e2)
 letEnc (Fst e@(Pair _ _)) = LamApp (letEnc e) (LamAbs 0 (LamAbs 1 (LamVar 0)))
 letEnc (Snd e@(Pair _ _)) = LamApp (letEnc e) (LamAbs 0 (LamAbs 1 (LamVar 1)))
-
-letEnc' :: Int -> LExpr -> LamExpr
-letEnc' _ (Var x) = LamVar x
-letEnc' d (Abs (V x) e) = LamAbs x $ letEnc' d e
-letEnc' d (Abs Discard e) = LamAbs d $ letEnc' d e
-
-getNonDiscard :: LExpr -> [Int]
-getNonDiscard (Var x) = [x]
-getNonDiscard (Abs (V x) e) = x : getNonDiscard e
-getNonDiscard (Let (V x) e1 e2) = x : getNonDiscard e1 ++ getNonDiscard e2
-getNonDiscard (Abs _ e) = getNonDiscard e
-getNonDiscard (Let _ e1 e2) = getNonDiscard e1 ++ getNonDiscard e2
-getNonDiscard (App e1 e2) = getNonDiscard e1 ++ getNonDiscard e2
-getNonDiscard (Fst e) = getNonDiscard e
-getNonDiscard (Snd e) = getNonDiscard e
-getNonDiscard (Pair e1 e2) = getNonDiscard e1 ++ getNonDiscard e2
-
-chooseN :: [LamExpr] -> Int
-chooseN es = chooseN'' 0 (concatMap chooseN' es)
-
-chooseN' :: LamExpr -> [Int]
-chooseN' (LamVar x) = [x]
-chooseN' (LamAbs x e) = x : chooseN' e
-chooseN' (LamApp e1 e2) = chooseN' e1 ++ chooseN' e2
-
-chooseN'' :: Int -> [Int] -> Int
-chooseN'' x [] = x
-chooseN'' x xs | x `notElem` xs = x
-               | otherwise = chooseN'' (x+1) xs
-
 
 -- Challenge 6
 -- Compare Innermost Reduction for Let_x and its Lambda Encoding
