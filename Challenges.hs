@@ -389,6 +389,7 @@ letEnc (Let Discard e1 e2) = LamApp (LamAbs 0 $ letEnc e2) $ letEnc e1
 letEnc (Pair e1 e2) = LamAbs 0 (LamApp (LamApp (LamVar 0) $ letEnc e1) $ letEnc e2)
 letEnc (Fst e@(Pair _ _)) = LamApp (letEnc e) (LamAbs 0 (LamAbs 1 (LamVar 0)))
 letEnc (Snd e@(Pair _ _)) = LamApp (letEnc e) (LamAbs 0 (LamAbs 1 (LamVar 1)))
+letEnc (App e1 e2) = LamApp (letEnc e1) (letEnc e2)
 
 -- Challenge 6
 -- Compare Innermost Reduction for Let_x and its Lambda Encoding
