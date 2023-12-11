@@ -387,8 +387,8 @@ letEnc (Abs Discard e) = LamAbs 0 $ letEnc e
 letEnc (Let (V x) e1 e2) = LamApp (LamAbs (x + 1) (letEnc e2)) (letEnc e1)
 letEnc (Let Discard e1 e2) = LamApp (LamAbs 0 $ letEnc e2) $ letEnc e1
 letEnc (Pair e1 e2) = LamAbs 0 (LamApp (LamApp (LamVar 0) $ letEnc e1) $ letEnc e2)
-letEnc (Fst e@(Pair _ _)) = LamApp (letEnc e) (LamAbs 0 (LamAbs 1 (LamVar 0)))
-letEnc (Snd e@(Pair _ _)) = LamApp (letEnc e) (LamAbs 0 (LamAbs 1 (LamVar 1)))
+letEnc (Fst e) = LamApp (letEnc e) (LamAbs 0 (LamAbs 1 (LamVar 0)))
+letEnc (Snd e) = LamApp (letEnc e) (LamAbs 0 (LamAbs 1 (LamVar 1)))
 letEnc (App e1 e2) = LamApp (letEnc e1) (letEnc e2)
 
 -- Challenge 6
@@ -450,7 +450,33 @@ cbnlam1 _ = Nothing
 -- LET --
 --------- 
 
-
+cbvlet1 :: LetExpr -> Maybe LetExpr
+cbvlet1 (App (Abs (V x) e1) e2) = 
+  do e' <- cbvlet1 
 
 compareRedn :: LExpr -> Int -> (Int,Int,Int,Int)
 compareRedn = undefined
+
+lamRedn :: LExpr -> Int -> (Int, Int)
+lamRedn e x = (cbvlamRedn (letEnc e) x 0, cbnlamRedn (letEnc e) x 0)
+
+cbvlamRedn :: LamExpr -> Int -> Int -> Int
+cbvlamRedn e u x | x == u || cbvlam1 e == Nothing = 0
+                 | otherwise = 1 + cbvlamRedn e' u (x + 1)
+                 where
+                   Just e' = cbvlam1 e
+
+cbnlamRedn :: LamExpr -> Int -> Int -> Int
+cbnlamRedn e u x | x == u || cbnlam1 e == Nothing = 0
+                 | otherwise = 1 + cbnlamRedn e' u (x + 1)
+                 where
+                   Just e' = cbnlam1 e
+
+-- compareRedn (Let (V 3) (Pair (App (Abs (V 1) (App (Var 1) (Var 1))) (Abs (V 2) (Var 2))) (App (Abs (V 1) (App (Var 1) (Var 1))) (Abs (V 2) (Var 2)))) (Fst (Var 3))) 10
+-- (6,8,4,6)
+
+-- compareRedn (Let Discard (App (Abs (V 1) (Var 1)) (App (Abs (V 1) (Var 1)) (Abs (V 1) (Var 1)))) (Snd (Pair (App (Abs (V 1) (Var 1)) (Abs (V 1) (Var 1))) (Abs (V 1) (Var 1))))) 10
+-- (5,7,2,4)
+
+-- compareRedn (Let (V 2) (Let (V 1) (Abs (V 0) (App (Var 0) (Var 0))) (App (Var 1) (Var 1))) (Snd (Pair (Var 2) (Abs (V 1) (Var 1))))) 100
+-- (100,100,2,4)
