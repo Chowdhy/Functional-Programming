@@ -450,27 +450,126 @@ cbnlam1 _ = Nothing
 -- LET --
 --------- 
 
-cbvlet1 :: LetExpr -> Maybe LetExpr
-cbvlet1 (App (Abs (V x) e1) e2) = 
-  do e' <- cbvlet1 
+letFree :: Int -> LExpr -> Bool
+letFree x (Var y) = x == y
+letFree x (Abs (V y) e) | x == y = False
+                        | otherwise = letFree x e
+letFree x (Abs Discard e) = letFree x e
+letFree x (App e1 e2) = letFree x e1 || letFree x e2
+letFree x (Fst e) = letFree x e
+letFree x (Snd e) = letFree x e
+letFree x (Pair e1 e2) = letFree x e1 && letFree x e2
+letFree x (Let (V y) e1 e2) | x == y = False
+                            | otherwise = letFree x e1
+letFree x (Let Discard e1 e2) = letFree x e1
+
+letRename :: Int -> LExpr -> Int
+letRename x e | letFree (x+1) e = letRename (x+1) e
+              | otherwise = x+1
+
+letSubst :: LExpr -> Int -> LExpr -> LExpr
+letSubst (Var x) y e | x == y = e
+                     | otherwise = Var x
+--letSubst (Abs Discard e1) y e = e1
+letSubst (Abs (V x) e1) y e | x /= y && not (letFree x e) = Abs (V x) (letSubst e1 y e)
+                            | x /= y && letFree x e = let x' = (letRename x e1) in letSubst (Abs (V x') (letSubst e1 x (Var x'))) y e
+                            | otherwise = Abs (V x) e1
+letSubst (App e1 e2) y e = App (letSubst e1 y e) (letSubst e2 y e)
+letSubst (Fst e1) y e = Fst (letSubst e1 y e)
+letSubst (Snd e1) y e = Snd (letSubst e1 y e)
+letSubst (Pair e1 e2) y e = Pair (letSubst e1 y e) (letSubst e2 y e)
+--letSubst (Let Discard e1 e2) y e = e2
+{-
+letSubst (Let (V x) e1 e2) y e | x /= y && not (letFree x e) = Let (V x) e1 (letSubst e2 y e)
+                               | x /= y && letFree x e = let x' = (letRename x e2) in letSubst (Let (V x') e1 (letSubst e2 x (Var x'))) y e
+                               | otherwise = Let (V x) e1 e2
+-}
+bindEqual :: Int -> Bind -> Bool
+bindEqual _ Discard = False
+bindEqual x (V y) = x == y
+
+isLetValue :: LExpr -> Bool
+isLetValue (Var x) = True
+isLetValue (Abs _ _) = True
+isLetValue _ = False
+
+isPair :: LExpr -> Bool
+isPair (Pair _ _) = True
+isPair _ = False
+
+cbvlet1 :: LExpr -> Maybe LExpr
+-- Contexts
+cbvlet1 (App e1 e2) | not $ isLetValue e1 =
+  do e' <- cbvlet1 e1
+     return (App e' e2)
+                    | not $ isLetValue e2 =
+  do e' <- cbvlet1 e2
+     return (App e1 e')
+
+cbvlet1 (Let b e1 e2) | not $ isLetValue e1 =
+  do e' <- cbvlet1 e1
+     return (Let b e' e2)
+cbvlet1 (Pair e1 e2) | not $ isLetValue e1 =
+  do e' <- cbvlet1 e1
+     return (Pair e' e2)
+                     | not $ isLetValue e2 =
+  do e' <- cbvlet1 e2
+     return (Pair e1 e')
+cbvlet1 (Fst e) | not (isLetValue e) && not (isPair e) =
+  do e' <- cbvlet1 e
+     return (Fst e')
+-- Reductions
+cbvlet1 (App (Abs Discard e1) _) = Just e1
+cbvlet1 (App (Abs (V x) e1) e) | isLetValue e = Just (letSubst e1 x e)
+cbvlet1 (Let Discard _ e) = Just e
+cbvlet1 (Let (V x) e1 e2) = Just (letSubst e2 x e1)
+cbvlet1 (Fst (Pair e _)) = Just e
+cbvlet1 (Snd (Pair _ e)) = Just e
+cbvlet1 (Fst e) = Just e
+-- Otherwise terminated or blocked
+cbvlet1 _ = Nothing
+
+--Let Discard (App (Abs (V 1) (Var 1)) (App (Abs (V 1) (Var 1)) (Abs (V 1) (Var 1)))) (Snd (Pair (App (Abs (V 1) (Var 1)) (Abs (V 1) (Var 1))) (Abs (V 1) (Var 1))))
+
+--Let (V 3) (Pair (App (Abs (V 1) (App (Var 1) (Var 1))) (Abs (V 2) (Var 2))) (App (Abs (V 1) (App (Var 1) (Var 1))) (Abs (V 2) (Var 2)))) (Fst (Var 3))
+
+cbnlet1 :: LExpr -> Maybe LExpr
+-- Reductions
+cbnlet1 (App (Abs Discard e1) _) = Just e1
+cbnlet1 (App (Abs (V x) e1) e) | isLetValue e = Just (letSubst e1 x e)
+cbnlet1 (Let Discard _ e) = Just e
+cbnlet1 (Let (V x) e1 e2) = Just (letSubst e2 x e1)
+cbnlet1 (Fst (Pair e _)) = Just e
+cbnlet1 (Snd (Pair _ e)) = Just e
+-- Contexts
+cbnlet1 (App e1 e2) | not $ isLetValue e1 =
+  do e' <- cbnlet1 e1
+     return (App e' e2)
+-- Otherwise terminated or blocked
+cbnlet1 _ = Nothing
 
 compareRedn :: LExpr -> Int -> (Int,Int,Int,Int)
-compareRedn = undefined
+compareRedn e u = (cbvletRedn u e, cbvlamRedn u e', cbnletRedn u e, cbnlamRedn u e')
+  where
+    e' = letEnc e
 
-lamRedn :: LExpr -> Int -> (Int, Int)
-lamRedn e x = (cbvlamRedn (letEnc e) x 0, cbnlamRedn (letEnc e) x 0)
+callBy :: Eq a => (a -> Maybe a) -> Int -> Int -> a -> Int
+callBy f x u e | x == u || f e == Nothing = 0
+               | otherwise = 1 + callBy f (x + 1) u e'
+               where
+                 Just e' = f e
 
-cbvlamRedn :: LamExpr -> Int -> Int -> Int
-cbvlamRedn e u x | x == u || cbvlam1 e == Nothing = 0
-                 | otherwise = 1 + cbvlamRedn e' u (x + 1)
-                 where
-                   Just e' = cbvlam1 e
+cbvletRedn :: Int -> LExpr -> Int
+cbvletRedn = callBy cbvlet1 0
 
-cbnlamRedn :: LamExpr -> Int -> Int -> Int
-cbnlamRedn e u x | x == u || cbnlam1 e == Nothing = 0
-                 | otherwise = 1 + cbnlamRedn e' u (x + 1)
-                 where
-                   Just e' = cbnlam1 e
+cbnletRedn :: Int -> LExpr -> Int
+cbnletRedn = callBy cbnlet1 0
+
+cbvlamRedn :: Int -> LamExpr -> Int
+cbvlamRedn = callBy cbvlam1 0
+
+cbnlamRedn :: Int -> LamExpr -> Int
+cbnlamRedn = callBy cbnlam1 0
 
 -- compareRedn (Let (V 3) (Pair (App (Abs (V 1) (App (Var 1) (Var 1))) (Abs (V 2) (Var 2))) (App (Abs (V 1) (App (Var 1) (Var 1))) (Abs (V 2) (Var 2)))) (Fst (Var 3))) 10
 -- (6,8,4,6)
