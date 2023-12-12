@@ -566,20 +566,5 @@ cbnletRedn = callBy cbnlet1 0
 cbvlamRedn :: Int -> LamExpr -> Int
 cbvlamRedn = callBy cbvlam1 0
 
-cbvletRedn' :: Int -> Int -> LExpr -> [(Int, Maybe LExpr)]
-cbvletRedn' u x e | u == x || cbvlet1 e == Nothing = [(0, cbvlet1 e)]
-                  | otherwise = (x, cbvlet1 e) : cbvletRedn' u (x+1) e'
-                  where
-                    Just e' = cbvlet1 e
-
 cbnlamRedn :: Int -> LamExpr -> Int
 cbnlamRedn = callBy cbnlam1 0
-
--- compareRedn (Let (V 3) (Pair (App (Abs (V 1) (App (Var 1) (Var 1))) (Abs (V 2) (Var 2))) (App (Abs (V 1) (App (Var 1) (Var 1))) (Abs (V 2) (Var 2)))) (Fst (Var 3))) 10
--- (6,8,4,6)
-
--- compareRedn (Let Discard (App (Abs (V 1) (Var 1)) (App (Abs (V 1) (Var 1)) (Abs (V 1) (Var 1)))) (Snd (Pair (App (Abs (V 1) (Var 1)) (Abs (V 1) (Var 1))) (Abs (V 1) (Var 1))))) 10
--- (5,7,2,4)
-
--- compareRedn (Let (V 2) (Let (V 1) (Abs (V 0) (App (Var 0) (Var 0))) (App (Var 1) (Var 1))) (Snd (Pair (Var 2) (Abs (V 1) (Var 1))))) 100
--- (100,100,2,4)
