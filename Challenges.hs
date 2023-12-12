@@ -502,9 +502,6 @@ cbvlet1 (App e1 e2) | not $ isLetValue e1 =
 cbvlet1 (Let b e1 e2) | not $ isLetValue e1 =
   do e' <- cbvlet1 e1
      return (Let b e' e2)
-                      | not $ isLetValue e2 =
-  do e' <- cbvlet1 e2
-     return (Let b e1 e')
 cbvlet1 (Pair e1 e2) | not $ isLetValue e1 =
   do e' <- cbvlet1 e1
      return (Pair e' e2)
