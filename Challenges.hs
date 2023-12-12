@@ -470,7 +470,6 @@ letRename x e | letFree (x+1) e = letRename (x+1) e
 letSubst :: LExpr -> Int -> LExpr -> LExpr
 letSubst (Var x) y e | x == y = e
                      | otherwise = Var x
---letSubst (Abs Discard e1) y e = e1
 letSubst (Abs (V x) e1) y e | x /= y && not (letFree x e) = Abs (V x) (letSubst e1 y e)
                             | x /= y && letFree x e = let x' = (letRename x e1) in letSubst (Abs (V x') (letSubst e1 x (Var x'))) y e
                             | otherwise = Abs (V x) e1
@@ -478,24 +477,15 @@ letSubst (App e1 e2) y e = App (letSubst e1 y e) (letSubst e2 y e)
 letSubst (Fst e1) y e = Fst (letSubst e1 y e)
 letSubst (Snd e1) y e = Snd (letSubst e1 y e)
 letSubst (Pair e1 e2) y e = Pair (letSubst e1 y e) (letSubst e2 y e)
---letSubst (Let Discard e1 e2) y e = e2
-{-
 letSubst (Let (V x) e1 e2) y e | x /= y && not (letFree x e) = Let (V x) e1 (letSubst e2 y e)
                                | x /= y && letFree x e = let x' = (letRename x e2) in letSubst (Let (V x') e1 (letSubst e2 x (Var x'))) y e
                                | otherwise = Let (V x) e1 e2
--}
-bindEqual :: Int -> Bind -> Bool
-bindEqual _ Discard = False
-bindEqual x (V y) = x == y
 
 isLetValue :: LExpr -> Bool
 isLetValue (Var x) = True
 isLetValue (Abs _ _) = True
+isLetValue (Pair e1 e2) = isLetValue e1 && isLetValue e2
 isLetValue _ = False
-
-isPair :: LExpr -> Bool
-isPair (Pair _ _) = True
-isPair _ = False
 
 cbvlet1 :: LExpr -> Maybe LExpr
 -- Contexts
@@ -505,19 +495,27 @@ cbvlet1 (App e1 e2) | not $ isLetValue e1 =
                     | not $ isLetValue e2 =
   do e' <- cbvlet1 e2
      return (App e1 e')
-
 cbvlet1 (Let b e1 e2) | not $ isLetValue e1 =
   do e' <- cbvlet1 e1
      return (Let b e' e2)
+                      | not $ isLetValue e2 =
+  do e' <- cbvlet1 e2
+     return (Let b e1 e')
 cbvlet1 (Pair e1 e2) | not $ isLetValue e1 =
   do e' <- cbvlet1 e1
      return (Pair e' e2)
                      | not $ isLetValue e2 =
   do e' <- cbvlet1 e2
      return (Pair e1 e')
-cbvlet1 (Fst e) | not (isLetValue e) && not (isPair e) =
+cbvlet1 (Fst e) | not (isLetValue e) =
   do e' <- cbvlet1 e
      return (Fst e')
+cbvlet1 (Snd e) | not (isLetValue e) =
+  do e' <- cbvlet1 e
+     return (Snd e')
+cbvlet1 (App (Abs b e1) e) | not $ isLetValue e =
+  do e' <- cbvlet1 e
+     return (App (Abs b e1) e')
 -- Reductions
 cbvlet1 (App (Abs Discard e1) _) = Just e1
 cbvlet1 (App (Abs (V x) e1) e) | isLetValue e = Just (letSubst e1 x e)
@@ -526,12 +524,9 @@ cbvlet1 (Let (V x) e1 e2) = Just (letSubst e2 x e1)
 cbvlet1 (Fst (Pair e _)) = Just e
 cbvlet1 (Snd (Pair _ e)) = Just e
 cbvlet1 (Fst e) = Just e
+cbvlet1 (Snd e) = Just e
 -- Otherwise terminated or blocked
-cbvlet1 _ = Nothing
-
---Let Discard (App (Abs (V 1) (Var 1)) (App (Abs (V 1) (Var 1)) (Abs (V 1) (Var 1)))) (Snd (Pair (App (Abs (V 1) (Var 1)) (Abs (V 1) (Var 1))) (Abs (V 1) (Var 1))))
-
---Let (V 3) (Pair (App (Abs (V 1) (App (Var 1) (Var 1))) (Abs (V 2) (Var 2))) (App (Abs (V 1) (App (Var 1) (Var 1))) (Abs (V 2) (Var 2)))) (Fst (Var 3))
+cbvlet1 x = Nothing
 
 cbnlet1 :: LExpr -> Maybe LExpr
 -- Reductions
@@ -541,6 +536,8 @@ cbnlet1 (Let Discard _ e) = Just e
 cbnlet1 (Let (V x) e1 e2) = Just (letSubst e2 x e1)
 cbnlet1 (Fst (Pair e _)) = Just e
 cbnlet1 (Snd (Pair _ e)) = Just e
+cbnlet1 (Fst e) = Just e
+cbnlet1 (Snd e) = Just e
 -- Contexts
 cbnlet1 (App e1 e2) | not $ isLetValue e1 =
   do e' <- cbnlet1 e1
@@ -554,8 +551,8 @@ compareRedn e u = (cbvletRedn u e, cbvlamRedn u e', cbnletRedn u e, cbnlamRedn u
     e' = letEnc e
 
 callBy :: Eq a => (a -> Maybe a) -> Int -> Int -> a -> Int
-callBy f x u e | x == u || f e == Nothing = 0
-               | otherwise = 1 + callBy f (x + 1) u e'
+callBy f x u e | x == u || f e == Nothing = x
+               | otherwise = callBy f (x + 1) u e'
                where
                  Just e' = f e
 
@@ -567,6 +564,12 @@ cbnletRedn = callBy cbnlet1 0
 
 cbvlamRedn :: Int -> LamExpr -> Int
 cbvlamRedn = callBy cbvlam1 0
+
+cbvletRedn' :: Int -> Int -> LExpr -> [(Int, Maybe LExpr)]
+cbvletRedn' u x e | u == x || cbvlet1 e == Nothing = [(0, cbvlet1 e)]
+                  | otherwise = (x, cbvlet1 e) : cbvletRedn' u (x+1) e'
+                  where
+                    Just e' = cbvlet1 e
 
 cbnlamRedn :: Int -> LamExpr -> Int
 cbnlamRedn = callBy cbnlam1 0
