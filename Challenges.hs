@@ -194,9 +194,13 @@ rotations t | es == 4 || es == 0 = [(R0, rotateTile R0 t)]
 containsEdge :: TileEdge -> Tile -> Bool
 containsEdge e t = e `elem` getEdges t
 
--- | Filters through rotations to leave rotations that do not contain any of the specified TileEdges.
+-- | Filters through rotations to leave those that do not contain any of the specified TileEdges.
 rotationsWithout :: [TileEdge] -> [TileRotation] -> [TileRotation]
 rotationsWithout es trs = [rot | rot@(r, t) <- trs, and [not $ containsEdge e t | e <- es]]
+
+-- | Filters through rotations to leave those that contain all of the specified TileEdges.
+rotationsWith :: [TileEdge] -> [TileRotation] -> [TileRotation]
+rotationsWith es trs = [rot | rot@(r, t) <- trs, and [containsEdge e t | e <- es]]
 
 -- | Provides a list of valid rotations for a Tile with respect to whether it is situated on an edge.
 validRotations :: Coordinate -> Coordinate -> Tile -> [TileRotation]
