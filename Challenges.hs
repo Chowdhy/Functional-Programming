@@ -165,9 +165,7 @@ data Rotation = R0 | R90 | R180 | R270
 type TileRotation = (Rotation, Tile)
 
 solveCircuit :: Puzzle -> Maybe [[ Rotation ]]
-solveCircuit p | any null [trs | rs <- puzzleRots, trs <- rs] = Nothing
-               where
-                 puzzleRots = puzzleRotations p
+solveCircuit p = solveCircuit' (1,1) (dimensions p) [] [] p
 
 rotateTile :: Rotation -> Tile -> Tile
 rotateTile R0 t = t
@@ -202,33 +200,54 @@ rotationsWithout es trs = [rot | rot@(r, t) <- trs, and [not $ containsEdge e t 
 rotationsWith :: [TileEdge] -> [TileRotation] -> [TileRotation]
 rotationsWith es trs = [rot | rot@(r, t) <- trs, and [containsEdge e t | e <- es]]
 
+satLeftConstraint :: TileRotation -> [TileRotation] -> [TileRotation]
+satLeftConstraint (r, t') trs | containsEdge East t' = rotationsWith [West] trs
+                              | otherwise = rotationsWithout [West] trs
+
+satAboveConstraint ::  TileRotation -> [TileRotation] -> [TileRotation]
+satAboveConstraint (r, t') trs | containsEdge South t' = rotationsWith [North] trs
+                               | otherwise = rotationsWithout [North] trs
+
 -- | Provides a list of valid rotations for a Tile with respect to whether it is situated on an edge.
-validRotations :: Coordinate -> Coordinate -> Tile -> [TileRotation]
-validRotations b@(w, l) c@(x, y) t | y == 1 && x == 1 = rotationsWithout [North, West] $ rotations t
-                                   | y == 1 && x == w = rotationsWithout [North, East] $ rotations t
-                                   | x == 1 && y == l = rotationsWithout [South, West] $ rotations t
-                                   | x == w && y == l = rotationsWithout [South, East] $ rotations t
-                                   | y == 1 = rotationsWithout [North] $ rotations t
-                                   | y == l = rotationsWithout [South] $ rotations t
-                                   | x == 1 = rotationsWithout [West] $ rotations t
-                                   | x == w = rotationsWithout [East] $ rotations t
-                                   | otherwise = rotations t
+validRotations :: Coordinate -> Coordinate -> Tile -> [[TileRotation]] -> [TileRotation]
+validRotations b@(w, l) c@(x, y) t trs | c == (1, 1) = rotationsWithout [North, West] $ rotations t
+                                       | c == (w, 1) = rotationsWithout [North, East] $ satLeftConstraint (trs!!0!!(w-2)) $ rotations t
+                                       | c == (1, l) = rotationsWithout [South, West] $ satAboveConstraint (trs!!(l-2)!!0) $ rotations t
+                                       | c == (w, l) = rotationsWithout [South, East] $ satAboveConstraint (trs!!(l-2)!!(w-1)) $ satLeftConstraint (trs!!(l-1)!!(w-2)) $ rotations t
+                                       | y == 1 = rotationsWithout [North] $ satLeftConstraint (trs!!0!!(x-2)) $ rotations t
+                                       | y == l = rotationsWithout [South] $ satAboveConstraint (trs!!(y-2)!!(x-1)) $ satLeftConstraint (trs!!(y-1)!!(x-2)) $ rotations t
+                                       | x == 1 = rotationsWithout [West] $ satAboveConstraint (trs!!(y-2)!!0) $ rotations t
+                                       | x == w = rotationsWithout [East] $ satAboveConstraint (trs!!(y-2)!!(x-1)) $ satLeftConstraint (trs!!(y-1)!!(x-2)) $ rotations t
+                                       | otherwise = satAboveConstraint (trs!!(y-2)!!(x-1)) $ satLeftConstraint (trs!!(y-1)!!(x-2)) $ rotations t
 
--- | Auxiliary function that calls puzzleRotations' from an initial state.
-puzzleRotations :: Puzzle -> [[[TileRotation]]]
-puzzleRotations p = puzzleRotations' (dimensions p) 1 p
+compilePuzzle :: [[TileRotation]] -> Puzzle
+compilePuzzle = map compilePuzzleRow
 
--- | Provides all valid rotations of Tiles in a Puzzle.
-puzzleRotations' :: Coordinate -> Int -> Puzzle -> [[[TileRotation]]]
-puzzleRotations' _ _ [] = []
-puzzleRotations' b y (r:rs) = rowRotations b (1, y) r : puzzleRotations' b (y+1) rs
+compilePuzzleRow :: [TileRotation] -> [Tile]
+compilePuzzleRow [] = []
+compilePuzzleRow ((_, t):trs) = t : compilePuzzleRow trs
 
--- | Provides all valid rotations of Tiles in a row of a Puzzle.
-rowRotations :: Coordinate -> Coordinate -> [Tile] -> [[TileRotation]]
-rowRotations _ _ [] = []
-rowRotations b c@(x, y) (t:ts) = validRotations b c t : rowRotations b (x+1, y) ts
+compileRotations :: [[TileRotation]] -> [[Rotation]]
+compileRotations = map compileRowRotations
 
--- | Returns the opposite TileEdge to the original TileEdge (an 180 degree rotation).
+compileRowRotations :: [TileRotation] -> [Rotation]
+compileRowRotations [] = []
+compileRowRotations ((r, _):trs) = r : compileRowRotations trs
+
+solveCircuit' :: Coordinate -> Coordinate -> [[TileRotation]] -> [TileRotation] -> Puzzle -> Maybe [[Rotation]]
+solveCircuit' _ _ trs _ [] | isPuzzleComplete $ compilePuzzle trs = Just (compileRotations trs)
+                           | otherwise = Nothing
+solveCircuit' (x, y) b trs trs' ([]:rs) = solveCircuit' (1, y+1) b (trs ++ [trs']) [] rs
+solveCircuit' (x, y) b trs trs' ((t:ts):rs) = solveBranches (validRotations b (x, y) t (trs++[trs'])) (x,y) b trs trs' (ts:rs)
+
+solveBranches :: [TileRotation] -> Coordinate -> Coordinate -> [[TileRotation]] -> [TileRotation] -> Puzzle -> Maybe [[Rotation]]
+solveBranches [] _ _ _ _ _ = Nothing
+solveBranches (tr:trs) c@(x, y) b trs' trs'' p | isJust solution = solution
+                                               | otherwise = solveBranches trs c b trs' trs'' p
+                                               where
+                                                 solution = solveCircuit' (x+1, y) b trs' (trs'' ++ [tr]) p
+
+-- | Returns the opposite TileEdge to the original TileEdge (a 180 degree rotation).
 complementingEdge :: TileEdge -> TileEdge
 complementingEdge = rotateEdge90 . rotateEdge90
 
@@ -237,19 +256,6 @@ containsComplement [] _ = True
 containsComplement (e:[]) es' = complementingEdge e `elem` es'
 containsComplement (e:es) es' | complementingEdge e `elem` es' = True
                               | otherwise = containsComplement es es'
-
-satisfyingRotations :: Tile -> (TileEdge, [TileRotation]) -> [TileRotation]
-satisfyingRotations t (e, trs) | e `notElem` getEdges t = [tr | tr@(r, t') <- trs, not $ (containsEdge $ complementingEdge e) t']
-                               | otherwise = [tr | tr@(r, t') <- trs, (containsEdge $ complementingEdge e) t']
-
-canSatisfy :: Tile -> (TileEdge, [TileRotation]) -> Bool
-canSatisfy t xs = not . null $ satisfyingRotations t xs
-
-satisfies :: Tile -> Tile -> Tile -> Bool
-satisfies n w c | South `elem` getEdges n && East `elem` getEdges w = containsEdge North c && containsEdge West c
-                | South `elem` getEdges n = containsEdge North c && not (containsEdge East c)
-                | East `elem` getEdges w = containsEdge West c && not (containsEdge North c)
-                | otherwise = not $ containsEdge West c || containsEdge East c
 
 -- Challenge 3
 -- Pretty Printing Let Expressions
