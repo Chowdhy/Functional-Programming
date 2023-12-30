@@ -28,7 +28,7 @@ type Puzzle = [ [ Tile ] ]
 type Coordinate = (Int, Int)
 
 isPuzzleComplete :: Puzzle -> Bool
-isPuzzleComplete p | not $ validPuzzle p = error "Invalid puzzle"
+isPuzzleComplete p | not $ validPuzzle p = False
                    | otherwise = allWiresConnected p && validSources p && validSinks p
 
 -- | Checks if a tile is valid according to the coursework tile specifications.
