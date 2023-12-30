@@ -15,6 +15,7 @@ module Challenges (TileEdge(..),Tile(..),Puzzle,isPuzzleComplete,
 import Parsing
 import Data.List (nub)
 import Data.Maybe (isJust)
+import Data.Char (isSpace)
 
 -- Challenge 1
 -- Testing Circuits
@@ -303,71 +304,81 @@ parseLetx :: String -> Maybe LExpr
 parseLetx s | null e || (not . null) (snd $ head e) = Nothing
             | otherwise = Just $ fst $ head e
             where
-              e = parse expr $ [c | c <- s, c /= ' ']
+              e = parse (token expr) s
 
 expr :: Parser LExpr
 expr = letExpr <|> absExpr <|> appExpr
 
 letExpr :: Parser LExpr
-letExpr = do string "let"
-             b <- bindD
-             bs <- many bindD
-             char '='
-             e1 <- expr
-             string "in"
-             e2 <- expr
+letExpr = do symbol "let"
+             b <- token bindD
+             bs <- many $ token bindD
+             symbol "="
+             e1 <- token expr
+             symbol "in"
+             e2 <- token expr
              return (Let b (absAssoc bs e1) e2)
 
 absExpr :: Parser LExpr
 absExpr = do char '\\'
              bs <- some bindD
-             string "->"
+             symbol "->"
              e <- expr
              return (absAssoc bs e)
 
 -- | Returns a (nested Abs) expression based on the provided list of Binds and LExpr.
 absAssoc :: [Bind] -> LExpr -> LExpr
-absAssoc [] e = e
-absAssoc (b:bs) e = (Abs b (absAssoc bs e))
+absAssoc bs e = foldr Abs e bs
 
 appExpr :: Parser LExpr
-appExpr = do e1 <- some fstExpr
-             e2 <- many expr
-             return (appAssoc (e1 ++ e2))
-          <|> fstExpr
+appExpr = do e1 <- fstExpr
+             es1 <- many fstExpr'
+             e2 <- many expr'
+             return (appAssoc (e1 : es1 ++ e2))
+          <|> token fstExpr
+
+fstExpr' :: Parser LExpr
+fstExpr' = do some $ sat isSpace
+              fstExpr
+
+expr' :: Parser LExpr
+expr' = do some $ sat isSpace
+           expr
 
 -- | Returns a (left associated nested App) expression based on the provided list of LExpr.
 appAssoc :: [LExpr] -> LExpr
 appAssoc (x:[]) = x
-appAssoc (x1:x2:xs) = appAssoc ((App x1 x2):xs)
+appAssoc (x1:x2:xs) = appAssoc (App x1 x2:xs)
 
 fstExpr :: Parser LExpr
-fstExpr = do string "fst("
-             e <- expr
+fstExpr = do symbol "fst"
+             char '('
+             e <- token expr
              char ')'
              return (Fst e)
           <|> sndExpr
 
 sndExpr :: Parser LExpr
-sndExpr = do string "snd("
-             e <- expr
+sndExpr = do symbol "snd"
+             char '('
+             e <- token expr
              char ')'
              return (Snd e)
           <|> pairExpr
 
 pairExpr :: Parser LExpr
 pairExpr = do char '('
-              e1 <- expr
+              e1 <- token expr
               char ','
-              e2 <- expr
+              e2 <- token expr
               char ')'
               return (Pair e1 e2)
            <|> bracketedExpr
 
 bracketedExpr :: Parser LExpr
-bracketedExpr = var <|> do char '('
-                           e <- expr
-                           char ')'
+bracketedExpr = var <|> do string "("
+                           e <- token expr
+                           string ")"
                            return e
 
 var :: Parser LExpr
