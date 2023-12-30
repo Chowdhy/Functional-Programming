@@ -68,20 +68,19 @@ isWire :: Tile -> Bool
 isWire (Wire _) = True
 isWire _ = False
 
--- | Auxiliary function that calls connectedTo' with an empty accumulator.
-connectedTo :: Puzzle -> (Tile -> Bool) -> Coordinate -> Bool
-connectedTo = connectedTo' []
-
 -- | Returns True if the Tile at the starting Coordinate is connected to a Tile that satisfies the given predicate.
 -- The function traverses the specified Puzzle until it finds a satisfying Tile, or until it loops.
-connectedTo' :: [Coordinate] -> Puzzle -> (Tile -> Bool) -> Coordinate -> Bool
-connectedTo' cs p pred c@(x, y) | isJust t && pred t' = True
-                                | c `elem` cs = False
-                                | otherwise = any (connectedTo' (c:cs) p pred) (getAdjacent es c p)
-                                where
-                                  t = getTileAt p c
-                                  Just t' = t
-                                  es = getEdges t'
+connectedTo :: Puzzle -> (Tile -> Bool) -> Coordinate -> Bool
+connectedTo = connectedTo' []
+  where
+    connectedTo' :: [Coordinate] -> Puzzle -> (Tile -> Bool) -> Coordinate -> Bool
+    connectedTo' cs p pred c@(x, y) | isJust t && pred t' = True
+                                    | c `elem` cs = False
+                                    | otherwise = any (connectedTo' (c:cs) p pred) (getAdjacent es c p)
+                                    where
+                                      t = getTileAt p c
+                                      Just t' = t
+                                      es = getEdges t'
 
 -- | Returns the new Coordinate after traversing from the starting Coordinate via the provided TileEdge.
 coordinates :: TileEdge -> Coordinate -> Coordinate
@@ -107,33 +106,30 @@ getEdges (Wire es) = es
 
 getTileAt :: Puzzle -> Coordinate -> Maybe Tile
 getTileAt = getTileAt' 1 1
-
-getTileAt' :: Int -> Int -> Puzzle -> Coordinate -> Maybe Tile
-getTileAt' _ _ [] _ = Nothing
-getTileAt' _ y ([]:rs) (x', y') = getTileAt' 1 (y + 1) rs (x', y')
-getTileAt' x y ((t:ts):rs) (x', y') | x == x' && y == y' = Just t
-                                    | y > y' || x' < 1 = Nothing
-                                    | otherwise = getTileAt' (x + 1) y (ts:rs) (x', y')
+  where
+    getTileAt' :: Int -> Int -> Puzzle -> Coordinate -> Maybe Tile
+    getTileAt' _ _ [] _ = Nothing
+    getTileAt' _ y ([]:rs) (x', y') = getTileAt' 1 (y + 1) rs (x', y')
+    getTileAt' x y ((t:ts):rs) (x', y') | x == x' && y == y' = Just t
+                                        | y > y' || x' < 1 = Nothing
+                                        | otherwise = getTileAt' (x + 1) y (ts:rs) (x', y')
 
 dimensions :: Puzzle -> (Int, Int)
 dimensions [] = (0, 0)
 dimensions p@(r:rs) = (length r, length p)
 
--- | Auxiliary function that calls allWiresConnected' from an initial state.
+-- | Checks that every Tile in a Puzzle, when it has a TileEdge, is connected to a reciprocating Tile for each TileEdge.
 allWiresConnected :: Puzzle -> Bool
 allWiresConnected = allWiresConnected' 1 1 []
-
--- | Checks that every Tile in a Puzzle, when it has a TileEdge, is connected to a reciprocating Tile for each TileEdge.
-allWiresConnected' :: Int -> Int -> Puzzle -> Puzzle -> Bool
-allWiresConnected' _ _ _ [] = True
-allWiresConnected' x y l p@(r:rs) = rowWiresConnected r x y (l ++ p) && allWiresConnected' x (y+1) (l ++ [r]) rs
+  where
+    allWiresConnected' :: Int -> Int -> Puzzle -> Puzzle -> Bool
+    allWiresConnected' _ _ _ [] = True
+    allWiresConnected' x y l p@(r:rs) = rowWiresConnected r x y (l ++ p) && allWiresConnected' x (y+1) (l ++ [r]) rs
 
 -- | Checks that every Tile in a row is connected to reciprocating Tiles.
 rowWiresConnected :: [Tile] -> Int -> Int -> Puzzle -> Bool
 rowWiresConnected [] _ _ _ = True
-rowWiresConnected ((Source es):ts) x y p = validEdges es (x, y) p && rowWiresConnected ts (x+1) y p
-rowWiresConnected ((Sink es):ts) x y p = validEdges es (x, y) p && rowWiresConnected ts (x+1) y p
-rowWiresConnected ((Wire es):ts) x y p = validEdges es (x, y) p && rowWiresConnected ts (x+1) y p
+rowWiresConnected (t:ts) x y p = validEdges (getEdges t) (x, y) p && rowWiresConnected ts (x+1) y p
 
 -- | Checks that every Sink in a Puzzle is connected to a Source.
 validSinks :: Puzzle -> Bool
@@ -154,10 +150,6 @@ validRowConnections [] _ _ _ _ _ = True
 validRowConnections (t:ts) x y pred pred' p | pred t = connectedTo p pred' (x, y) && validRowConnections ts (x+1) y pred pred' p
                                             | otherwise = validRowConnections ts (x+1) y pred pred' p
 
-{-
-[ [ Wire [North,West] , Wire [North,South] , Source [North] ], [ Wire [North,West], Wire [East,West], Wire [North,East] ], [ Sink [West] , Wire [North,South] , Wire [North,West] ] ]
--}
-
 -- Challenge 2
 -- Solving Circuits
 data Rotation = R0 | R90 | R180 | R270
@@ -167,6 +159,19 @@ type TileRotation = (Rotation, Tile)
 
 solveCircuit :: Puzzle -> Maybe [[ Rotation ]]
 solveCircuit p = solveCircuit' (1,1) (dimensions p) [] [] p
+  where
+    solveCircuit' :: Coordinate -> Coordinate -> [[TileRotation]] -> [TileRotation] -> Puzzle -> Maybe [[Rotation]]
+    solveCircuit' _ _ trs _ [] | isPuzzleComplete $ compilePuzzle trs = Just (compileRotations trs)
+                               | otherwise = Nothing
+    solveCircuit' (x, y) b trs trs' ([]:rs) = solveCircuit' (1, y+1) b (trs ++ [trs']) [] rs
+    solveCircuit' (x, y) b trs trs' ((t:ts):rs) = solveBranches (validRotations b (x, y) t (trs++[trs'])) (x,y) b trs trs' (ts:rs)
+
+    solveBranches :: [TileRotation] -> Coordinate -> Coordinate -> [[TileRotation]] -> [TileRotation] -> Puzzle -> Maybe [[Rotation]]
+    solveBranches [] _ _ _ _ _ = Nothing
+    solveBranches (tr:trs) c@(x, y) b trs' trs'' p | isJust solution = solution
+                                                   | otherwise = solveBranches trs c b trs' trs'' p
+                                                   where
+                                                     solution = solveCircuit' (x+1, y) b trs' (trs'' ++ [tr]) p
 
 rotateTile :: Rotation -> Tile -> Tile
 rotateTile R0 t = t
@@ -235,19 +240,6 @@ compileRowRotations :: [TileRotation] -> [Rotation]
 compileRowRotations [] = []
 compileRowRotations ((r, _):trs) = r : compileRowRotations trs
 
-solveCircuit' :: Coordinate -> Coordinate -> [[TileRotation]] -> [TileRotation] -> Puzzle -> Maybe [[Rotation]]
-solveCircuit' _ _ trs _ [] | isPuzzleComplete $ compilePuzzle trs = Just (compileRotations trs)
-                           | otherwise = Nothing
-solveCircuit' (x, y) b trs trs' ([]:rs) = solveCircuit' (1, y+1) b (trs ++ [trs']) [] rs
-solveCircuit' (x, y) b trs trs' ((t:ts):rs) = solveBranches (validRotations b (x, y) t (trs++[trs'])) (x,y) b trs trs' (ts:rs)
-
-solveBranches :: [TileRotation] -> Coordinate -> Coordinate -> [[TileRotation]] -> [TileRotation] -> Puzzle -> Maybe [[Rotation]]
-solveBranches [] _ _ _ _ _ = Nothing
-solveBranches (tr:trs) c@(x, y) b trs' trs'' p | isJust solution = solution
-                                               | otherwise = solveBranches trs c b trs' trs'' p
-                                               where
-                                                 solution = solveCircuit' (x+1, y) b trs' (trs'' ++ [tr]) p
-
 -- | Returns the opposite TileEdge to the original TileEdge (a 180 degree rotation).
 complementingEdge :: TileEdge -> TileEdge
 complementingEdge = rotateEdge90 . rotateEdge90
@@ -285,14 +277,14 @@ prettyPrint e@(Abs _ _) = '\\' : fst absPair ++ "-> " ++ snd absPair
   where
     absPair = prettyAbs e
 
+-- | Breaks a (nested) Abs expression into a composition of Abs expressions.
 prettyAbs :: LExpr -> (String, String)
 prettyAbs = prettyAbs' []
-
--- | Breaks a (nested) Abs expression into a composition of Abs expressions.
-prettyAbs' :: String -> LExpr -> (String, String)
-prettyAbs' cs (Abs b e@(Abs _ _)) = prettyAbs' (cs ++ prettyBind b ++ " ") e
-prettyAbs' cs (Abs b e) = (cs ++ prettyBind b ++ " ", prettyPrint e)
-prettyAbs' _ _ = error "Not of Abs format"
+  where
+    prettyAbs' :: String -> LExpr -> (String, String)
+    prettyAbs' cs (Abs b e@(Abs _ _)) = prettyAbs' (cs ++ prettyBind b ++ " ") e
+    prettyAbs' cs (Abs b e) = (cs ++ prettyBind b ++ " ", prettyPrint e)
+    prettyAbs' _ _ = error "Not of Abs format"
 
 prettyBind :: Bind -> String
 prettyBind Discard = "_"
