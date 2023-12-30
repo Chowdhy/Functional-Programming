@@ -45,8 +45,31 @@ c4tests = TestLabel "Challenge 4 Tests" (TestList [c4test1, c4test2, c4test3, c4
 
 -- Challenge 5 Tests
 
-c5test1 = TestLabel "Spec example 1" $ TestCase (assertEqual "letEnc (Let Discard (Abs (V 1) (Var 1)) (Abs (V 1) (Var 1))" (LamApp (LamAbs 0 (LamAbs 2 (LamVar 2))) (LamAbs 2 (LamVar 2))) (letEnc (Let Discard (Abs (V 1) (Var 1)) (Abs (V 1) (Var 1)))))
-c5test2 = TestLabel "Spec example 2" $ TestCase (assertEqual "letEnc (Fst (Pair (Abs (V 1) (Var 1)) (Abs Discard (Var 2))))" (LamApp (LamAbs 0 (LamApp (LamApp (LamVar 0) (LamAbs 2 (LamVar 2))) (LamAbs 0 (LamVar 2)))) (LamAbs 0 (LamAbs 1 (LamVar 0)))) (letEnc (Fst (Pair (Abs (V 1) (Var 1)) (Abs Discard (Var 2))))))
+type Mapping = [(Int, Int)]
+
+alphaEquivalent :: LamExpr -> LamExpr -> Bool
+alphaEquivalent = alphaEquivalent' []
+  where
+    alphaEquivalent' :: Mapping -> LamExpr -> LamExpr -> Bool
+    alphaEquivalent' m (LamVar x) (LamVar y) | value == Nothing && key == Nothing = True
+                                             | otherwise = value == Just y && key == Just x
+                                             where
+                                               value = findValue m x
+                                               key = findKey m y
+    alphaEquivalent' m (LamAbs x e1) (LamAbs y e2) = alphaEquivalent' ((x, y):m) e1 e2
+    alphaEquivalent' m (LamApp x1 x2) (LamApp y1 y2) = alphaEquivalent' m x1 y1 && alphaEquivalent' m x2 y2
+    alphaEquivalent' m x y = False
+    
+    findValue :: Mapping -> Int -> Maybe Int
+    findValue [] _ = Nothing
+    findValue ((x, y):ms) x' | x == x' = Just y
+                             | otherwise = findValue ms x'
+
+    findKey :: Mapping -> Int -> Maybe Int
+    findKey = findValue . map (\(x, y) -> (y, x))
+
+c5test1 = TestLabel "Spec example 1" $ TestCase (assertEqual "alphaEquivalent (LamApp (LamAbs 0 (LamAbs 2 (LamVar 2))) (LamAbs 2 (LamVar 2))) (letEnc (Let Discard (Abs (V 1) (Var 1)) (Abs (V 1) (Var 1)))" True (alphaEquivalent (LamApp (LamAbs 0 (LamAbs 2 (LamVar 2))) (LamAbs 2 (LamVar 2))) (letEnc (Let Discard (Abs (V 1) (Var 1)) (Abs (V 1) (Var 1))))))
+c5test2 = TestLabel "Spec example 2" $ TestCase (assertEqual "alphaEquivalent (LamApp (LamAbs 0 (LamApp (LamApp (LamVar 0) (LamAbs 2 (LamVar 2))) (LamAbs 0 (LamVar 2)))) (LamAbs 0 (LamAbs 1 (LamVar 0)))) (letEnc (Fst (Pair (Abs (V 1) (Var 1)) (Abs Discard (Var 2)))))) (letEnc (Fst (Pair (Abs (V 1) (Var 1)) (Abs Discard (Var 2)))))" True (alphaEquivalent (LamApp (LamAbs 0 (LamApp (LamApp (LamVar 0) (LamAbs 2 (LamVar 2))) (LamAbs 0 (LamVar 2)))) (LamAbs 0 (LamAbs 1 (LamVar 0)))) (letEnc (Fst (Pair (Abs (V 1) (Var 1)) (Abs Discard (Var 2)))))))
 
 c5tests = TestLabel "Challenge 5 Tests" (TestList [c5test1, c5test2])
 
@@ -59,4 +82,4 @@ c6test3 = TestLabel "Spec example 3" $ TestCase (assertEqual "compareRedn (Let (
 c6tests = TestLabel "Challenge 6 Tests" (TestList [c6test1, c6test2, c6test3])
 
 --
-tests = TestList[c1tests, c2tests, c3tests, c4tests, c5tests, c6tests]
+tests = TestList [c1tests, c2tests, c3tests, c4tests, c5tests, c6tests]
