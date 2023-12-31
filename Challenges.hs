@@ -215,14 +215,14 @@ satisfyConstraints ((e, (_, t)):trs') trs | containsEdge (complementingEdge e) t
 -- | Provides a list of valid rotations for a Tile with respect to whether it is situated on an edge.
 validRotations :: Coordinate -> Coordinate -> Tile -> [[TileRotation]] -> [TileRotation]
 validRotations b@(w, l) c@(x, y) t trs | c == (1, 1) = rotationsWithout [North, West] $ rotations t
-                                       | c == (w, 1) = rotationsWithout [North, East] $ satisfyConstraints [(East, trs!!0!!(x-2))] $ rotations t
+                                       | c == (w, 1) = rotationsWithout [North, East] $ satisfyConstraints [(West, trs!!0!!(x-2))] $ rotations t
                                        | c == (1, l) = rotationsWithout [South, West] $ satisfyConstraints [(North, trs!!(y-2)!!0)] $ rotations t
-                                       | c == (w, l) = rotationsWithout [South, East] $ satisfyConstraints [(North, trs!!(y-2)!!(x-1)), (East, trs!!(y-1)!!(x-2))] $ rotations t
-                                       | y == 1 = rotationsWithout [North] $ satisfyConstraints [(East, trs!!0!!(x-2))] $ rotations t
-                                       | y == l = rotationsWithout [South] $ satisfyConstraints [(North, trs!!(y-2)!!(x-1)), (East, trs!!(y-1)!!(x-2))] $ rotations t
+                                       | c == (w, l) = rotationsWithout [South, East] $ satisfyConstraints [(North, trs!!(y-2)!!(x-1)), (West, trs!!(y-1)!!(x-2))] $ rotations t
+                                       | y == 1 = rotationsWithout [North] $ satisfyConstraints [(West, trs!!0!!(x-2))] $ rotations t
+                                       | y == l = rotationsWithout [South] $ satisfyConstraints [(North, trs!!(y-2)!!(x-1)), (West, trs!!(y-1)!!(x-2))] $ rotations t
                                        | x == 1 = rotationsWithout [West] $ satisfyConstraints [(North, trs!!(y-2)!!0)] $ rotations t
-                                       | x == w = rotationsWithout [East] $ satisfyConstraints [(North, trs!!(y-2)!!(x-1)), (East, trs!!(y-1)!!(x-2))] $ rotations t
-                                       | otherwise = satisfyConstraints [(North, trs!!(y-2)!!(x-1)), (East, trs!!(y-1)!!(x-2))] $ rotations t
+                                       | x == w = rotationsWithout [East] $ satisfyConstraints [(North, trs!!(y-2)!!(x-1)), (West, trs!!(y-1)!!(x-2))] $ rotations t
+                                       | otherwise = satisfyConstraints [(North, trs!!(y-2)!!(x-1)), (West, trs!!(y-1)!!(x-2))] $ rotations t
 
 -- | When given a nested list of TileRotations and a function that transforms TileRotations, returns a nested list of transformed TileRotations.
 compile :: (TileRotation -> a) -> [[TileRotation]] -> [[a]]
