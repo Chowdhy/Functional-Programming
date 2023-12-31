@@ -7,20 +7,36 @@ c1test1 = TestCase (assertEqual "isPuzzleComplete []" True (isPuzzleComplete [])
 c1test2 = TestCase (assertEqual "isPuzzleComplete [[Wire []]]" True (isPuzzleComplete [[Wire []]]))
 c1test3 = TestCase (assertEqual "isPuzzleComplete [[Source [North]]]" False (isPuzzleComplete [[Source [North]]]))
 c1test4 = TestCase (assertEqual "isPuzzleComplete [[Sink [North]]]" False (isPuzzleComplete [[Sink [North]]]))
+c1test5 = TestCase (assertEqual "isPuzzleComplete [[Source [South]], [Sink [North]]]" True (isPuzzleComplete [[Source [South]], [Sink [North]]]))
+c1test6 = TestCase (assertEqual "isPuzzleComplete [[Source [South, East], Wire [West, South]], [Wire [North, East], Wire [West, North]]]" False (isPuzzleComplete [[Source [South, East], Wire [West, South]], [Wire [North, East], Wire [West, North]]]))
+c1test7 = TestCase (assertEqual "isPuzzleComplete [[Source [South, East], Wire [West, South]], [Wire [North, East], Wire [West, North]]]" False (isPuzzleComplete [[Sink [South, East], Wire [West, South]], [Wire [North, East], Wire [West, North]]]))
+c1test8 = TestCase (assertEqual "isPuzzleComplete [[Source [South, East], Wire [West, South]], [Wire [North, East], Wire [West, North]]]" True (isPuzzleComplete [[Source [South, East], Wire [West, South]], [Wire [North, East], Sink [West, North]]]))
+c1test9 = TestCase (assertEqual "isPuzzleComplete [[Source [South, East], Wire [West, South], Sink [South, East], Wire [West, South]], [Wire [North, East], Wire [West, North], Wire [North, East], Wire [West, North]]]" False (isPuzzleComplete [[Source [South, East], Wire [West, South], Sink [South, East], Wire [West, South]], [Wire [North, East], Wire [West, North], Wire [North, East], Wire [West, North]]]))
 
 c1tests = TestLabel "Challenge 1 Tests" (
   TestList [
   TestLabel "Empty puzzle is complete" c1test1,
   TestLabel "Singleton empty wire is complete" c1test2,
   TestLabel "Singleton source is not complete" c1test3,
-  TestLabel "Singleton sink is not complete" c1test4
+  TestLabel "Singleton sink is not complete" c1test4,
+  TestLabel "Connected puzzle with only source and sink is complete" c1test5,
+  TestLabel "Connected puzzle with source and no sink is not complete" c1test6,
+  TestLabel "Connected puzzle with sink and no source is not complete" c1test7,
+  TestLabel "Connected puzzle with wires, both source and sink, and path between them, is complete" c1test8,
+  TestLabel "Connected puzzle with wires, both source and sink, but no path between them, is not complete" c1test9
   ])
 
 -- Challenge 2 Tests
 
+c2test1 = TestCase (assertEqual "solveCircuit [[Source [North]]]" Nothing (solveCircuit [[Source [North]]]))
+c2test2 = TestCase (assertEqual "solveCircuit [[Sink [North]]]" Nothing (solveCircuit [[Sink [North]]]))
+c2test3 = TestCase (assertEqual "solveCircuit [[Source [East, South], Wire [West, South], Wire [East, South], Source [West, South]], [Wire [North, East], Wire [West, North, East], Wire [West, North, East], Wire [West, North]], [Wire [South, East], Wire [West, South, East], Wire [West, South, East], Wire [West, South]], [Sink [North, East], Wire [West, North], Wire [North, East], Sink [West, North]]] == Just (replicate 4 (replicate 4 R0))" False (solveCircuit [[Source [East, South], Wire [West, South], Wire [East, South], Source [West, South]], [Wire [North, East], Wire [West, North, East], Wire [West, North, East], Wire [West, North]], [Wire [South, East], Wire [West, South, East], Wire [West, South, East], Wire [West, South]], [Sink [North, East], Wire [West, North], Wire [North, East], Sink [West, North]]] == Just (replicate 4 (replicate 4 R0))))
+c2test4 = TestCase (assertEqual "" True (solveCircuit [[Source [East, South], Wire [West, South], Source [South]], [Wire [East, North], Sink [West, North], Wire [North, South]], [Wire [], Wire [], Sink [North]]] == Just (replicate 3 (replicate 3 R0))))
+
 c2tests = TestLabel "Challenge 2 Tests" (
   TestList [
-
+  TestLabel "Puzzle that is already connected but not complete (and can be solved) returns a solution with non-zero rotations" c2test3,
+  TestLabel "Puzzle that is already complete returns full-zero solution" c2test4
   ])
 
 -- Challenge 3 Tests
@@ -47,6 +63,7 @@ c4tests = TestLabel "Challenge 4 Tests" (TestList [c4test1, c4test2, c4test3, c4
 
 type Mapping = [(Int, Int)]
 
+-- | Checks if two expressions are alpha equivalent.
 alphaEquivalent :: LamExpr -> LamExpr -> Bool
 alphaEquivalent = alphaEquivalent' []
   where
@@ -59,7 +76,7 @@ alphaEquivalent = alphaEquivalent' []
     alphaEquivalent' m (LamAbs x e1) (LamAbs y e2) = alphaEquivalent' ((x, y):m) e1 e2
     alphaEquivalent' m (LamApp x1 x2) (LamApp y1 y2) = alphaEquivalent' m x1 y1 && alphaEquivalent' m x2 y2
     alphaEquivalent' m x y = False
-    
+
     findValue :: Mapping -> Int -> Maybe Int
     findValue [] _ = Nothing
     findValue ((x, y):ms) x' | x == x' = Just y
