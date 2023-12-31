@@ -51,10 +51,10 @@ validPuzzle p = equalLengthRows p && all validTile [t | ts <- p, t <- ts]
 -- | When given a Tile's coordinates and a list of its TileEdges, returns a list of all adjacent coordinates.
 getAdjacent :: [TileEdge] -> Coordinate -> Puzzle -> [Coordinate]
 getAdjacent [] _ _ = []
-getAdjacent (North:es) c@(x, y) p = (x, y-1) : getAdjacent es c p
-getAdjacent (East:es) c@(x, y) p = (x+1, y) : getAdjacent es c p
-getAdjacent (South:es) c@(x, y) p = (x, y+1) : getAdjacent es c p
-getAdjacent (West:es) c@(x, y) p = (x-1, y) : getAdjacent es c p
+getAdjacent (North:es) c@(x, y) p = (x, y - 1) : getAdjacent es c p
+getAdjacent (East:es) c@(x, y) p = (x + 1, y) : getAdjacent es c p
+getAdjacent (South:es) c@(x, y) p = (x, y + 1) : getAdjacent es c p
+getAdjacent (West:es) c@(x, y) p = (x - 1, y) : getAdjacent es c p
 
 isSink :: Tile -> Bool
 isSink (Sink _) = True
@@ -84,10 +84,10 @@ connectedTo = connectedTo' []
 
 -- | Returns the new Coordinate after traversing from the starting Coordinate via the provided TileEdge.
 coordinates :: TileEdge -> Coordinate -> Coordinate
-coordinates North (x,y) = (x,y-1)
-coordinates East (x,y) = (x+1,y)
-coordinates South (x,y) = (x, y+1)
-coordinates West (x,y) = (x-1,y)
+coordinates North (x,y) = (x, y - 1)
+coordinates East (x,y) = (x + 1, y)
+coordinates South (x,y) = (x, y + 1)
+coordinates West (x,y) = (x - 1, y)
 
 -- | Checks that the Tile at the specified Coordinate, when it has a TileEdge, is connected to a reciprocating Tile for each TileEdge.
 validEdges :: [TileEdge] -> Coordinate -> Puzzle -> Bool
@@ -124,12 +124,12 @@ allWiresConnected = allWiresConnected' 1 1 []
   where
     allWiresConnected' :: Int -> Int -> Puzzle -> Puzzle -> Bool
     allWiresConnected' _ _ _ [] = True
-    allWiresConnected' x y l p@(r:rs) = rowWiresConnected r x y (l ++ p) && allWiresConnected' x (y+1) (l ++ [r]) rs
+    allWiresConnected' x y l p@(r:rs) = rowWiresConnected r x y (l ++ p) && allWiresConnected' x (y + 1) (l ++ [r]) rs
 
--- | Checks that every Tile in a row is connected to reciprocating Tiles.
-rowWiresConnected :: [Tile] -> Int -> Int -> Puzzle -> Bool
-rowWiresConnected [] _ _ _ = True
-rowWiresConnected (t:ts) x y p = validEdges (getEdges t) (x, y) p && rowWiresConnected ts (x+1) y p
+    -- | Checks that every Tile in a row is connected to reciprocating Tiles.
+    rowWiresConnected :: [Tile] -> Int -> Int -> Puzzle -> Bool
+    rowWiresConnected [] _ _ _ = True
+    rowWiresConnected (t:ts) x y p = validEdges (getEdges t) (x, y) p && rowWiresConnected ts (x + 1) y p
 
 -- | Checks that every Sink in a Puzzle is connected to a Source.
 validSinks :: Puzzle -> Bool
@@ -142,13 +142,13 @@ validSources = validConnections 1 1 [] isSource isSink
 -- | When provided two Predicates, checks that every Tile satisfying the first predicate in a Puzzle is connected to a Tile satisfying the second predicate.
 validConnections :: Int -> Int -> Puzzle -> (Tile -> Bool) -> (Tile -> Bool) -> Puzzle -> Bool
 validConnections _ _ _ _ _ [] = True
-validConnections x y l pred pred' p@(r:rs) = validRowConnections r x y pred pred' (l ++ p) && validConnections x (y+1) (l ++ [r]) pred pred' rs
-
--- | When provided two Predicates, checks that Tile satisfying the first predicate in a row is connected to a Tile satisfying the second predicate.
-validRowConnections :: [Tile] -> Int -> Int -> (Tile -> Bool) -> (Tile -> Bool) -> Puzzle -> Bool
-validRowConnections [] _ _ _ _ _ = True
-validRowConnections (t:ts) x y pred pred' p | pred t = connectedTo p pred' (x, y) && validRowConnections ts (x+1) y pred pred' p
-                                            | otherwise = validRowConnections ts (x+1) y pred pred' p
+validConnections x y l pred pred' p@(r:rs) = validRowConnections r x y pred pred' (l ++ p) && validConnections x (y + 1) (l ++ [r]) pred pred' rs
+  where
+    -- | When provided two Predicates, checks that Tile satisfying the first predicate in a row is connected to a Tile satisfying the second predicate.
+    validRowConnections :: [Tile] -> Int -> Int -> (Tile -> Bool) -> (Tile -> Bool) -> Puzzle -> Bool
+    validRowConnections [] _ _ _ _ _ = True
+    validRowConnections (t:ts) x y pred pred' p | pred t = connectedTo p pred' (x, y) && validRowConnections ts (x + 1) y pred pred' p
+                                                | otherwise = validRowConnections ts (x + 1) y pred pred' p
 
 -- Challenge 2
 -- Solving Circuits
@@ -163,7 +163,7 @@ solveCircuit p = solveCircuit' (1,1) (dimensions p) [] [] p
     solveCircuit' :: Coordinate -> Coordinate -> [[TileRotation]] -> [TileRotation] -> Puzzle -> Maybe [[Rotation]]
     solveCircuit' _ _ trs _ [] | isPuzzleComplete $ compilePuzzle trs = Just (compileRotations trs)
                                | otherwise = Nothing
-    solveCircuit' (x, y) b trs trs' ([]:rs) = solveCircuit' (1, y+1) b (trs ++ [trs']) [] rs
+    solveCircuit' (x, y) b trs trs' ([]:rs) = solveCircuit' (1, y + 1) b (trs ++ [trs']) [] rs
     solveCircuit' (x, y) b trs trs' ((t:ts):rs) = solveBranches (validRotations b (x, y) t (trs++[trs'])) (x,y) b trs trs' (ts:rs)
 
     solveBranches :: [TileRotation] -> Coordinate -> Coordinate -> [[TileRotation]] -> [TileRotation] -> Puzzle -> Maybe [[Rotation]]
@@ -171,7 +171,7 @@ solveCircuit p = solveCircuit' (1,1) (dimensions p) [] [] p
     solveBranches (tr:trs) c@(x, y) b trs' trs'' p | isJust solution = solution
                                                    | otherwise = solveBranches trs c b trs' trs'' p
                                                    where
-                                                     solution = solveCircuit' (x+1, y) b trs' (trs'' ++ [tr]) p
+                                                     solution = solveCircuit' (x + 1, y) b trs' (trs'' ++ [tr]) p
 
 rotateTile :: Rotation -> Tile -> Tile
 rotateTile R0 t = t
@@ -226,19 +226,15 @@ validRotations b@(w, l) c@(x, y) t trs | c == (1, 1) = rotationsWithout [North, 
                                        | x == w = rotationsWithout [East] $ satAboveConstraint (trs!!(y-2)!!(x-1)) $ satLeftConstraint (trs!!(y-1)!!(x-2)) $ rotations t
                                        | otherwise = satAboveConstraint (trs!!(y-2)!!(x-1)) $ satLeftConstraint (trs!!(y-1)!!(x-2)) $ rotations t
 
-compilePuzzle :: [[TileRotation]] -> Puzzle
-compilePuzzle = map compilePuzzleRow
+-- | When given a nested list of TileRotations and a function that transforms TileRotations, returns a nested list of transformed TileRotations.
+compile :: (TileRotation -> a) -> [[TileRotation]] -> [[a]]
+compile f = map $ map f
 
-compilePuzzleRow :: [TileRotation] -> [Tile]
-compilePuzzleRow [] = []
-compilePuzzleRow ((_, t):trs) = t : compilePuzzleRow trs
+compilePuzzle :: [[TileRotation]] -> Puzzle
+compilePuzzle = compile snd
 
 compileRotations :: [[TileRotation]] -> [[Rotation]]
-compileRotations = map compileRowRotations
-
-compileRowRotations :: [TileRotation] -> [Rotation]
-compileRowRotations [] = []
-compileRowRotations ((r, _):trs) = r : compileRowRotations trs
+compileRotations = compile fst
 
 -- | Returns the opposite TileEdge to the original TileEdge (a 180 degree rotation).
 complementingEdge :: TileEdge -> TileEdge
@@ -315,8 +311,7 @@ absExpr :: Parser LExpr
 absExpr = do char '\\'
              bs <- some bindD
              symbol "->"
-             e <- expr
-             return (absAssoc bs e)
+             absAssoc bs <$> expr
 
 -- | Returns a (nested Abs) expression based on the provided list of Binds and LExpr.
 absAssoc :: [Bind] -> LExpr -> LExpr
@@ -328,14 +323,16 @@ appExpr = do e1 <- fstExpr
              e2 <- many expr'
              return (appAssoc (e1 : es1 ++ e2))
           <|> token fstExpr
+  where
+    -- | Parses a spaced fstExpr.
+    fstExpr' :: Parser LExpr
+    fstExpr' = do some $ sat isSpace
+                  fstExpr
 
-fstExpr' :: Parser LExpr
-fstExpr' = do some $ sat isSpace
-              fstExpr
-
-expr' :: Parser LExpr
-expr' = do some $ sat isSpace
-           expr
+    -- | Parses a spaced expr.
+    expr' :: Parser LExpr
+    expr' = do some $ sat isSpace
+               expr
 
 -- | Returns a (left associated nested App) expression based on the provided list of LExpr.
 appAssoc :: [LExpr] -> LExpr
@@ -463,6 +460,7 @@ cbnlam1 _ = Nothing
 -- LET --
 --------- 
 
+-- | Checks if a variable name is free in a LExpr.
 letFree :: Int -> LExpr -> Bool
 letFree x (Var y) = x == y
 letFree x (Abs (V y) e) | x == y = False
@@ -476,10 +474,12 @@ letFree x (Let (V y) e1 e2) | x == y = False
                             | otherwise = letFree x e1
 letFree x (Let Discard e1 e2) = letFree x e1
 
+-- | Renames one variable throughout the given LExpr.
 letRename :: Int -> LExpr -> Int
-letRename x e | letFree (x+1) e = letRename (x+1) e
-              | otherwise = x+1
+letRename x e | letFree (x + 1) e = letRename (x + 1) e
+              | otherwise = x + 1
 
+-- | Substitutes an LExpr in place of a specified variable in the given LExpr.
 letSubst :: LExpr -> Int -> LExpr -> LExpr
 letSubst (Var x) y e | x == y = e
                      | otherwise = Var x
@@ -500,6 +500,7 @@ isLetValue (Abs _ _) = True
 isLetValue (Pair e1 e2) = isLetValue e1 && isLetValue e2
 isLetValue _ = False
 
+-- | Performs one step of Call by Value reduction.
 cbvlet1 :: LExpr -> Maybe LExpr
 -- Contexts
 cbvlet1 (App e1 e2) | not $ isLetValue e1 =
@@ -538,6 +539,7 @@ cbvlet1 (Snd e) = Just e
 -- Otherwise terminated or blocked
 cbvlet1 x = Nothing
 
+-- | Performs one step of Call by Name reduction.
 cbnlet1 :: LExpr -> Maybe LExpr
 -- Reductions
 cbnlet1 (App (Abs Discard e1) _) = Just e1
@@ -560,6 +562,7 @@ compareRedn e u = (cbvletRedn u e, cbvlamRedn u e', cbnletRedn u e, cbnlamRedn u
   where
     e' = letEnc e
 
+-- | Returns number of reductions (or upper bound) of a given type of expression.
 callBy :: Eq a => (a -> Maybe a) -> Int -> Int -> a -> Int
 callBy f x u e | x == u || f e == Nothing = x
                | otherwise = callBy f (x + 1) u e'
