@@ -14,7 +14,7 @@ module Challenges (TileEdge(..),Tile(..),Puzzle,isPuzzleComplete,
 -- Import standard library and parsing definitions from Hutton 2016, Chapter 13
 import Parsing
 import Data.List (nub)
-import Data.Maybe (isJust)
+import Data.Maybe (isJust,isNothing)
 import Data.Char (isSpace)
 
 -- Challenge 1
@@ -237,12 +237,6 @@ compileRotations = compile fst
 -- | Returns the opposite TileEdge to the original TileEdge (a 180 degree rotation).
 complementingEdge :: TileEdge -> TileEdge
 complementingEdge = rotateEdge90 . rotateEdge90
-
-containsComplement :: [TileEdge] -> [TileEdge] -> Bool
-containsComplement [] _ = True
-containsComplement (e:[]) es' = complementingEdge e `elem` es'
-containsComplement (e:es) es' | complementingEdge e `elem` es' = True
-                              | otherwise = containsComplement es es'
 
 -- Challenge 3
 -- Pretty Printing Let Expressions
@@ -482,14 +476,14 @@ letSubst :: LExpr -> Int -> LExpr -> LExpr
 letSubst (Var x) y e | x == y = e
                      | otherwise = Var x
 letSubst (Abs (V x) e1) y e | x /= y && not (letFree x e) = Abs (V x) (letSubst e1 y e)
-                            | x /= y && letFree x e = let x' = (letRename x e1) in letSubst (Abs (V x') (letSubst e1 x (Var x'))) y e
+                            | x /= y && letFree x e = let x' = letRename x e1 in letSubst (Abs (V x') (letSubst e1 x (Var x'))) y e
                             | otherwise = Abs (V x) e1
 letSubst (App e1 e2) y e = App (letSubst e1 y e) (letSubst e2 y e)
 letSubst (Fst e1) y e = Fst (letSubst e1 y e)
 letSubst (Snd e1) y e = Snd (letSubst e1 y e)
 letSubst (Pair e1 e2) y e = Pair (letSubst e1 y e) (letSubst e2 y e)
 letSubst (Let (V x) e1 e2) y e | x /= y && not (letFree x e) = Let (V x) e1 (letSubst e2 y e)
-                               | x /= y && letFree x e = let x' = (letRename x e2) in letSubst (Let (V x') e1 (letSubst e2 x (Var x'))) y e
+                               | x /= y && letFree x e = let x' = letRename x e2 in letSubst (Let (V x') e1 (letSubst e2 x (Var x'))) y e
                                | otherwise = Let (V x) e1 e2
 
 isLetValue :: LExpr -> Bool
@@ -562,7 +556,7 @@ compareRedn e u = (cbvletRedn u e, cbvlamRedn u e', cbnletRedn u e, cbnlamRedn u
 
 -- | Returns number of reductions (or upper bound) of a given type of expression.
 callBy :: Eq a => (a -> Maybe a) -> Int -> Int -> a -> Int
-callBy f x u e | x == u || f e == Nothing = x
+callBy f x u e | x == u || isNothing (f e) = x
                | otherwise = callBy f (x + 1) u e'
                where
                  Just e' = f e
