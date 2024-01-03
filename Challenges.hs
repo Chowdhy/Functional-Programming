@@ -158,11 +158,14 @@ data Rotation = R0 | R90 | R180 | R270
 type TileRotation = (Rotation, Tile)
 
 solveCircuit :: Puzzle -> Maybe [[ Rotation ]]
-solveCircuit p = solveCircuit' (1, 1) (dimensions p) [] [] p
+solveCircuit p | not $ validPuzzle p = Nothing
+               | otherwise = solveCircuit' (1, 1) (dimensions p) [] [] p
   where
     solveCircuit' :: Coordinate -> Coordinate -> [[TileRotation]] -> [TileRotation] -> Puzzle -> Maybe [[Rotation]]
-    solveCircuit' _ _ trs _ [] | isPuzzleComplete $ compilePuzzle trs = Just (compileRotations trs)
+    solveCircuit' _ _ trs _ [] | validSources sp && validSinks sp = Just (compileRotations trs)
                                | otherwise = Nothing
+                               where
+                                 sp = compilePuzzle trs
     solveCircuit' (x, y) b trs trs' ([]:rs) = solveCircuit' (1, y + 1) b (trs ++ [trs']) [] rs
     solveCircuit' (x, y) b trs trs' ((t:ts):rs) = solveBranches (validRotations b (x, y) t (trs ++ [trs'])) (x, y) b trs trs' (ts:rs)
 
