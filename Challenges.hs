@@ -297,39 +297,24 @@ letExpr = do symbol "let"
              e1 <- token expr
              symbol "in"
              e2 <- token expr
-             return (Let b (absAssoc bs e1) e2)
+             return (Let b (foldr Abs e1 bs) e2)
 
 absExpr :: Parser LExpr
 absExpr = do char '\\'
-             bs <- some bindD
+             bs <- some (token bindD)
              symbol "->"
-             absAssoc bs <$> expr
-
--- | Returns a (nested Abs) expression based on the provided list of Binds and LExpr.
-absAssoc :: [Bind] -> LExpr -> LExpr
-absAssoc bs e = foldr Abs e bs
+             e <- expr
+             return (foldr Abs e bs)
 
 appExpr :: Parser LExpr
-appExpr = do e1 <- fstExpr
-             es1 <- many fstExpr'
-             e2 <- many expr'
-             return (appAssoc (e1 : es1 ++ e2))
+appExpr = do e <- fstExpr
+             es <- some spacedExpr
+             return (foldl App e es)
           <|> token fstExpr
   where
-    -- | Parses a spaced fstExpr.
-    fstExpr' :: Parser LExpr
-    fstExpr' = do some $ sat isSpace
-                  fstExpr
-
-    -- | Parses a spaced expr.
-    expr' :: Parser LExpr
-    expr' = do some $ sat isSpace
-               expr
-
--- | Returns a (left associated nested App) expression based on the provided list of LExpr.
-appAssoc :: [LExpr] -> LExpr
-appAssoc (x:[]) = x
-appAssoc (x1:x2:xs) = appAssoc (App x1 x2:xs)
+    spacedExpr :: Parser LExpr
+    spacedExpr = do some $ sat isSpace
+                    fstExpr <|> expr
 
 fstExpr :: Parser LExpr
 fstExpr = do symbol "fst"
@@ -357,15 +342,14 @@ pairExpr = do char '('
            <|> bracketedExpr
 
 bracketedExpr :: Parser LExpr
-bracketedExpr = var <|> do string "("
+bracketedExpr = var <|> do char '('
                            e <- token expr
-                           string ")"
+                           char ')'
                            return e
 
 var :: Parser LExpr
 var = do char 'x'
-         ds <- some digit
-         return (Var (read ds))
+         Var <$> nat
 
 bindD :: Parser Bind
 bindD = bindV <|> do char '_'
@@ -373,8 +357,7 @@ bindD = bindV <|> do char '_'
 
 bindV :: Parser Bind
 bindV = do char 'x'
-           ds <- some digit
-           return (V (read ds))
+           V <$> nat
 
 -- Challenge 5
 -- Let Encoding in Lambda 
