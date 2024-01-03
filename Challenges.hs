@@ -105,14 +105,14 @@ getEdges (Sink es) = es
 getEdges (Wire es) = es
 
 getTileAt :: Puzzle -> Coordinate -> Maybe Tile
-getTileAt = getTileAt' 1 1
+getTileAt = getTileAt' (1, 1)
   where
-    getTileAt' :: Int -> Int -> Puzzle -> Coordinate -> Maybe Tile
-    getTileAt' _ _ [] _ = Nothing
-    getTileAt' _ y ([]:rs) (x', y') = getTileAt' 1 (y + 1) rs (x', y')
-    getTileAt' x y ((t:ts):rs) (x', y') | x == x' && y == y' = Just t
-                                        | y > y' || x' < 1 = Nothing
-                                        | otherwise = getTileAt' (x + 1) y (ts:rs) (x', y')
+    getTileAt' :: Coordinate -> Puzzle -> Coordinate -> Maybe Tile
+    getTileAt' _ [] _ = Nothing
+    getTileAt' (_, y) ([]:rs) (x', y') = getTileAt' (1, y + 1) rs (x', y')
+    getTileAt' (x, y) ((t:ts):rs) (x', y') | x == x' && y == y' = Just t
+                                           | y > y' || x' < 1 = Nothing
+                                           | otherwise = getTileAt' (x + 1, y) (ts:rs) (x', y')
 
 dimensions :: Puzzle -> (Int, Int)
 dimensions [] = (0, 0)
@@ -120,35 +120,35 @@ dimensions p@(r:rs) = (length r, length p)
 
 -- | Checks that every Tile in a Puzzle, when it has a TileEdge, is connected to a reciprocating Tile for each TileEdge.
 allWiresConnected :: Puzzle -> Bool
-allWiresConnected = allWiresConnected' 1 1 []
+allWiresConnected = allWiresConnected' (1, 1) []
   where
-    allWiresConnected' :: Int -> Int -> Puzzle -> Puzzle -> Bool
-    allWiresConnected' _ _ _ [] = True
-    allWiresConnected' x y l p@(r:rs) = rowWiresConnected r x y (l ++ p) && allWiresConnected' x (y + 1) (l ++ [r]) rs
+    allWiresConnected' :: Coordinate -> Puzzle -> Puzzle -> Bool
+    allWiresConnected' _ _ [] = True
+    allWiresConnected' c@(x, y) l p@(r:rs) = rowWiresConnected r c (l ++ p) && allWiresConnected' (x, y + 1) (l ++ [r]) rs
 
     -- | Checks that every Tile in a row is connected to reciprocating Tiles.
-    rowWiresConnected :: [Tile] -> Int -> Int -> Puzzle -> Bool
-    rowWiresConnected [] _ _ _ = True
-    rowWiresConnected (t:ts) x y p = validEdges (getEdges t) (x, y) p && rowWiresConnected ts (x + 1) y p
+    rowWiresConnected :: [Tile] -> Coordinate -> Puzzle -> Bool
+    rowWiresConnected [] _ _ = True
+    rowWiresConnected (t:ts) c@(x, y) p = validEdges (getEdges t) c p && rowWiresConnected ts (x + 1, y) p
 
 -- | Checks that every Sink in a Puzzle is connected to a Source.
 validSinks :: Puzzle -> Bool
-validSinks = validConnections 1 1 [] isSink isSource
+validSinks = validConnections (1, 1) [] isSink isSource
 
 -- | Checks that every Source in a Puzzle is connected to a Sink.
 validSources :: Puzzle -> Bool
-validSources = validConnections 1 1 [] isSource isSink
+validSources = validConnections (1, 1) [] isSource isSink
 
 -- | When provided two Predicates, checks that every Tile satisfying the first predicate in a Puzzle is connected to a Tile satisfying the second predicate.
-validConnections :: Int -> Int -> Puzzle -> (Tile -> Bool) -> (Tile -> Bool) -> Puzzle -> Bool
-validConnections _ _ _ _ _ [] = True
-validConnections x y l pred pred' p@(r:rs) = validRowConnections r x y pred pred' (l ++ p) && validConnections x (y + 1) (l ++ [r]) pred pred' rs
+validConnections :: Coordinate -> Puzzle -> (Tile -> Bool) -> (Tile -> Bool) -> Puzzle -> Bool
+validConnections _ _ _ _ [] = True
+validConnections c@(x, y) l pred pred' p@(r:rs) = validRowConnections r c pred pred' (l ++ p) && validConnections (x, y + 1) (l ++ [r]) pred pred' rs
   where
     -- | When provided two Predicates, checks that Tile satisfying the first predicate in a row is connected to a Tile satisfying the second predicate.
-    validRowConnections :: [Tile] -> Int -> Int -> (Tile -> Bool) -> (Tile -> Bool) -> Puzzle -> Bool
-    validRowConnections [] _ _ _ _ _ = True
-    validRowConnections (t:ts) x y pred pred' p | pred t = connectedTo p pred' (x, y) && validRowConnections ts (x + 1) y pred pred' p
-                                                | otherwise = validRowConnections ts (x + 1) y pred pred' p
+    validRowConnections :: [Tile] -> Coordinate -> (Tile -> Bool) -> (Tile -> Bool) -> Puzzle -> Bool
+    validRowConnections [] _ _ _ _ = True
+    validRowConnections (t:ts) c@(x, y) pred pred' p | pred t = connectedTo p pred' c && validRowConnections ts (x + 1, y) pred pred' p
+                                                     | otherwise = validRowConnections ts (x + 1, y) pred pred' p
 
 -- Challenge 2
 -- Solving Circuits
