@@ -52,12 +52,14 @@ c3tests = TestLabel "Challenge 3 Tests" (TestList [c3test1, c3test2, c3test3, c3
 
 -- Challenge 4 Tests
 
-c4test1 = TestLabel "Spec example 1" $ TestCase (assertEqual "parseLetx \"x1 (x2 x3)\"" (Just (App (Var 1) (App (Var 2) (Var 3)))) (parseLetx "x1 (x2 x3)"))
-c4test2 = TestLabel "Spec example 2" $ TestCase (assertEqual "parseLetx \"x1 x2 x3\"" (Just (App (App (Var 1) (Var 2)) (Var 3))) (parseLetx "x1 x2 x3"))
-c4test3 = TestLabel "Spec example 3" $ TestCase (assertEqual "parseLetx \"let x1 x3 = x2 in x1 x2\"" (Just (Let (V 1) (Abs (V 3) (Var 2)) (App (Var 1) (Var 2)))) (parseLetx "let x1 x3 = x2 in x1 x2"))
-c4test4 = TestLabel "Spec example 4" $ TestCase (assertEqual "parseLetx \"let x1 _ x3 = x3 in \\x3 -> x1 x3 x3\"" (Just (Let (V 1) (Abs Discard (Abs (V 3) (Var 3))) (Abs (V 3) (App (App (Var 1) (Var 3)) (Var 3))))) (parseLetx "let x1 _ x3 = x3 in \\x3 -> x1 x3 x3"))
+c4test1 = TestLabel "Brackets change App association" $ TestCase (assertEqual "parseLetx \"x1 (x2 x3)\"" (Just (App (Var 1) (App (Var 2) (Var 3)))) (parseLetx "x1 (x2 x3)"))
+c4test2 = TestLabel "App associates left" $ TestCase (assertEqual "parseLetx \"x1 x2 x3\"" (Just (App (App (Var 1) (Var 2)) (Var 3))) (parseLetx "x1 x2 x3"))
+c4test3 = TestLabel "Let syntax sugar" $ TestCase (assertEqual "parseLetx \"let x1 x3 = x2 in x1 x2\"" (Just (Let (V 1) (Abs (V 3) (Var 2)) (App (Var 1) (Var 2)))) (parseLetx "let x1 x3 = x2 in x1 x2"))
+c4test4 = TestLabel "Let syntax sugar with Discard into an Abs" $ TestCase (assertEqual "parseLetx \"let x1 _ x3 = x3 in \\x3 -> x1 x3 x3\"" (Just (Let (V 1) (Abs Discard (Abs (V 3) (Var 3))) (Abs (V 3) (App (App (Var 1) (Var 3)) (Var 3))))) (parseLetx "let x1 _ x3 = x3 in \\x3 -> x1 x3 x3"))
+c4test5 = TestLabel "App requires space" $ TestCase (assertEqual "parseLetx \"x1x2\"" Nothing (parseLetx "x1x2"))
+c4test6 = TestLabel "Abs syntax sugar" $ TestCase (assertEqual "parseLetx \"\\x1 x2 x3 -> x4 x5\"" (Just (Abs (V 1) (Abs (V 2) (Abs (V 3) (App (Var 4) (Var 5)))))) (parseLetx "\\x1 x2 x3 -> x4 x5"))
 
-c4tests = TestLabel "Challenge 4 Tests" (TestList [c4test1, c4test2, c4test3, c4test4])
+c4tests = TestLabel "Challenge 4 Tests" (TestList [c4test1, c4test2, c4test3, c4test4, c4test5, c4test6])
 
 -- Challenge 5 Tests
 
