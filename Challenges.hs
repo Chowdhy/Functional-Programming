@@ -293,6 +293,9 @@ parseLetx s | null e || (not . null) (snd $ head e) = Nothing
 expr :: Parser LExpr
 expr = letExpr <|> absExpr <|> appExpr
 
+tighterExpr :: Parser LExpr
+tighterExpr = fstExpr <|> sndExpr <|> pairExpr <|> var <|> bracketedExpr
+
 letExpr :: Parser LExpr
 letExpr = do symbol "let"
              b <- token bindD
@@ -311,14 +314,14 @@ absExpr = do char '\\'
              return (foldr Abs e bs)
 
 appExpr :: Parser LExpr
-appExpr = do e <- fstExpr
+appExpr = do e <- tighterExpr
              es <- some spacedExpr
              return (foldl App e es)
-          <|> token fstExpr
+          <|> token tighterExpr
   where
     spacedExpr :: Parser LExpr
     spacedExpr = do some $ sat isSpace
-                    fstExpr <|> expr
+                    tighterExpr <|> expr
 
 fstExpr :: Parser LExpr
 fstExpr = do symbol "fst"
@@ -326,7 +329,6 @@ fstExpr = do symbol "fst"
              e <- token expr
              char ')'
              return (Fst e)
-          <|> sndExpr
 
 sndExpr :: Parser LExpr
 sndExpr = do symbol "snd"
@@ -334,7 +336,6 @@ sndExpr = do symbol "snd"
              e <- token expr
              char ')'
              return (Snd e)
-          <|> pairExpr
 
 pairExpr :: Parser LExpr
 pairExpr = do char '('
@@ -343,13 +344,12 @@ pairExpr = do char '('
               e2 <- token expr
               char ')'
               return (Pair e1 e2)
-           <|> bracketedExpr
 
 bracketedExpr :: Parser LExpr
-bracketedExpr = var <|> do char '('
-                           e <- token expr
-                           char ')'
-                           return e
+bracketedExpr = do char '('
+                   e <- token expr
+                   char ')'
+                   return e
 
 var :: Parser LExpr
 var = do char 'x'
