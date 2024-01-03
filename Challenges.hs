@@ -190,10 +190,11 @@ rotateEdge90 West = North
 
 -- | Provides all ways of uniquely rotating a Tile.
 rotations :: Tile -> [TileRotation]
-rotations t | es == 4 || es == 0 = [(R0, t)]
+rotations t | length es == 4 || null es = [(R0, t)]
+            | length es == 2 && (head es == complementingEdge (es!!1)) = [(r, rotateTile r t) | r <- [R0, R90]]
             | otherwise = [(r, rotateTile r t) | r <- [R0, R90, R180, R270]]
             where
-              es = length $ nub $ getEdges t
+              es = nub $ getEdges t
 
 containsEdge :: TileEdge -> Tile -> Bool
 containsEdge e t = e `elem` getEdges t
