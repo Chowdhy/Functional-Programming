@@ -291,7 +291,7 @@ parseLetx s | null e || (not . null) (snd $ head e) = Nothing
               e = parse (token expr) s
 
 expr :: Parser LExpr
-expr = letExpr <|> absExpr <|> appExpr
+expr = letExpr <|> absExpr <|> appExpr <|> tighterExpr
 
 tighterExpr :: Parser LExpr
 tighterExpr = fstExpr <|> sndExpr <|> pairExpr <|> var <|> bracketedExpr
@@ -317,7 +317,6 @@ appExpr :: Parser LExpr
 appExpr = do e <- tighterExpr
              es <- some spacedExpr
              return (foldl App e es)
-          <|> token tighterExpr
   where
     spacedExpr :: Parser LExpr
     spacedExpr = do some $ sat isSpace
@@ -325,16 +324,12 @@ appExpr = do e <- tighterExpr
 
 fstExpr :: Parser LExpr
 fstExpr = do symbol "fst"
-             char '('
-             e <- token expr
-             char ')'
+             e <- token bracketedExpr
              return (Fst e)
 
 sndExpr :: Parser LExpr
 sndExpr = do symbol "snd"
-             char '('
-             e <- token expr
-             char ')'
+             e <- token bracketedExpr
              return (Snd e)
 
 pairExpr :: Parser LExpr
