@@ -298,8 +298,8 @@ tighterExpr = fstExpr <|> sndExpr <|> pairExpr <|> var <|> bracketedExpr
 
 letExpr :: Parser LExpr
 letExpr = do symbol "let"
-             b <- token bindD
-             bs <- many $ token bindD
+             b <- token bind
+             bs <- many $ token bind
              symbol "="
              e1 <- token expr
              symbol "in"
@@ -308,7 +308,7 @@ letExpr = do symbol "let"
 
 absExpr :: Parser LExpr
 absExpr = do char '\\'
-             bs <- some (token bindD)
+             bs <- some (token bind)
              symbol "->"
              e <- expr
              return (foldr Abs e bs)
@@ -350,9 +350,9 @@ var :: Parser LExpr
 var = do char 'x'
          Var <$> nat
 
-bindD :: Parser Bind
-bindD = bindV <|> do char '_'
-                     return Discard
+bind :: Parser Bind
+bind = bindV <|> do char '_'
+                    return Discard
 
 bindV :: Parser Bind
 bindV = do char 'x'
