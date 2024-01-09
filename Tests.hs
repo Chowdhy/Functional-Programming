@@ -27,16 +27,15 @@ c1tests = TestLabel "Challenge 1 Tests" (
   ])
 
 -- Challenge 2 Tests
-
-c2test1 = TestCase (assertEqual "solveCircuit [[Source [North]]]" Nothing (solveCircuit [[Source [North]]]))
-c2test2 = TestCase (assertEqual "solveCircuit [[Sink [North]]]" Nothing (solveCircuit [[Sink [North]]]))
-c2test3 = TestCase (assertEqual "solveCircuit [[Source [East, South], Wire [West, South], Wire [East, South], Source [West, South]], [Wire [North, East], Wire [West, North, East], Wire [West, North, East], Wire [West, North]], [Wire [South, East], Wire [West, South, East], Wire [West, South, East], Wire [West, South]], [Sink [North, East], Wire [West, North], Wire [North, East], Sink [West, North]]] == Just (replicate 4 (replicate 4 R0))" False (solveCircuit [[Source [East, South], Wire [West, South], Wire [East, South], Source [West, South]], [Wire [North, East], Wire [West, North, East], Wire [West, North, East], Wire [West, North]], [Wire [South, East], Wire [West, South, East], Wire [West, South, East], Wire [West, South]], [Sink [North, East], Wire [West, North], Wire [North, East], Sink [West, North]]] == Just (replicate 4 (replicate 4 R0))))
-c2test4 = TestCase (assertEqual "solveCircuit [[Source [East, South], Wire [West, South], Source [South]], [Wire [East, North], Sink [West, North], Wire [North, South]], [Wire [], Wire [], Sink [North]]] == Just (replicate 3 (replicate 3 R0))" True (solveCircuit [[Source [East, South], Wire [West, South], Source [South]], [Wire [East, North], Sink [West, North], Wire [North, South]], [Wire [], Wire [], Sink [North]]] == Just (replicate 3 (replicate 3 R0))))
+c2test1 = TestCase (assertEqual "solveCircuit ((Source [West, North] : replicate 18 (Wire [West, North]) ++ [Sink [West, North]]) : replicate 19 (replicate 20 (Wire [West, North])))" Nothing (solveCircuit ((Source [West, North] : replicate 18 (Wire [West, North]) ++ [Sink [West, North]]) : replicate 19 (replicate 20 (Wire [West, North])))))
+c2test2 = TestCase (assertEqual "solveCircuit [[Source [East, South], Wire [West, South], Wire [East, South], Source [West, South]], [Wire [North, East], Wire [West, North, East], Wire [West, North, East], Wire [West, North]], [Wire [South, East], Wire [West, South, East], Wire [West, South, East], Wire [West, South]], [Sink [North, East], Wire [West, North], Wire [North, East], Sink [West, North]]] == Just (replicate 4 (replicate 4 R0))" False (solveCircuit [[Source [East, South], Wire [West, South], Wire [East, South], Source [West, South]], [Wire [North, East], Wire [West, North, East], Wire [West, North, East], Wire [West, North]], [Wire [South, East], Wire [West, South, East], Wire [West, South, East], Wire [West, South]], [Sink [North, East], Wire [West, North], Wire [North, East], Sink [West, North]]] == Just (replicate 4 (replicate 4 R0))))
+c2test3 = TestCase (assertEqual "solveCircuit [[Source [East, South], Wire [West, South], Source [South]], [Wire [East, North], Sink [West, North], Wire [North, South]], [Wire [], Wire [], Sink [North]]] == Just (replicate 3 (replicate 3 R0))" True (solveCircuit [[Source [East, South], Wire [West, South], Source [South]], [Wire [East, North], Sink [West, North], Wire [North, South]], [Wire [], Wire [], Sink [North]]] == Just (replicate 3 (replicate 3 R0))))
 
 c2tests = TestLabel "Challenge 2 Tests" (
   TestList [
-  TestLabel "Puzzle that is already connected but not complete (and can be solved) returns a solution with non-zero rotations" c2test3,
-  TestLabel "Puzzle that is already complete returns full-zero solution" c2test4
+  TestLabel "Unsolvable puzzle returns Nothing" c2test1,
+  TestLabel "Puzzle that is already connected but not complete (and can be solved) returns a solution with non-zero rotations" c2test2,
+  TestLabel "Puzzle that is already complete returns full-zero solution" c2test3
   ])
 
 -- Challenge 3 Tests
@@ -58,6 +57,7 @@ c4test3 = TestLabel "Let syntax sugar" $ TestCase (assertEqual "parseLetx \"let 
 c4test4 = TestLabel "Let syntax sugar with Discard into an Abs" $ TestCase (assertEqual "parseLetx \"let x1 _ x3 = x3 in \\x3 -> x1 x3 x3\"" (Just (Let (V 1) (Abs Discard (Abs (V 3) (Var 3))) (Abs (V 3) (App (App (Var 1) (Var 3)) (Var 3))))) (parseLetx "let x1 _ x3 = x3 in \\x3 -> x1 x3 x3"))
 c4test5 = TestLabel "App requires space" $ TestCase (assertEqual "parseLetx \"x1x2\"" Nothing (parseLetx "x1x2"))
 c4test6 = TestLabel "Abs syntax sugar" $ TestCase (assertEqual "parseLetx \"\\x1 x2 x3 -> x4 x5\"" (Just (Abs (V 1) (Abs (V 2) (Abs (V 3) (App (Var 4) (Var 5)))))) (parseLetx "\\x1 x2 x3 -> x4 x5"))
+c4test7 = TestLabel "All expressions" $ TestCase (assertEqual "parseLetx \"x1 (let x2 _ = x3 in x4) fst ((x5, snd (\\x6 -> x7 x8))) let x9 = x10 in \\_ -> x11 x12\"" (Just $ App (App (App (Var 1) (Let (V 2) (Abs Discard (Var 3)) (Var 4))) (Fst (Pair (Var 5) (Snd (Abs (V 6) (App (Var 7) (Var 8))))))) (Let (V 9) (Var 10) (Abs Discard (Var 11)))) (parseLetx "x1 (let x2 _ = x3 in x4) fst ((x5, snd (\\x6 -> x7 x8))) let x9 = x10 in \\_ -> x11 x12"))
 
 c4tests = TestLabel "Challenge 4 Tests" (TestList [c4test1, c4test2, c4test3, c4test4, c4test5, c4test6])
 
@@ -70,7 +70,7 @@ alphaEquivalent :: LamExpr -> LamExpr -> Bool
 alphaEquivalent = alphaEquivalent' []
   where
     alphaEquivalent' :: Mapping -> LamExpr -> LamExpr -> Bool
-    alphaEquivalent' m (LamVar x) (LamVar y) | value == Nothing && key == Nothing = True
+    alphaEquivalent' m (LamVar x) (LamVar y) | value == Nothing && key == Nothing = x == y
                                              | otherwise = value == Just y && key == Just x
                                              where
                                                value = findValue m x
@@ -89,16 +89,23 @@ alphaEquivalent = alphaEquivalent' []
 
 c5test1 = TestLabel "Spec example 1" $ TestCase (assertEqual "alphaEquivalent (LamApp (LamAbs 0 (LamAbs 2 (LamVar 2))) (LamAbs 2 (LamVar 2))) (letEnc (Let Discard (Abs (V 1) (Var 1)) (Abs (V 1) (Var 1)))" True (alphaEquivalent (LamApp (LamAbs 0 (LamAbs 2 (LamVar 2))) (LamAbs 2 (LamVar 2))) (letEnc (Let Discard (Abs (V 1) (Var 1)) (Abs (V 1) (Var 1))))))
 c5test2 = TestLabel "Spec example 2" $ TestCase (assertEqual "alphaEquivalent (LamApp (LamAbs 0 (LamApp (LamApp (LamVar 0) (LamAbs 2 (LamVar 2))) (LamAbs 0 (LamVar 2)))) (LamAbs 0 (LamAbs 1 (LamVar 0)))) (letEnc (Fst (Pair (Abs (V 1) (Var 1)) (Abs Discard (Var 2)))))) (letEnc (Fst (Pair (Abs (V 1) (Var 1)) (Abs Discard (Var 2)))))" True (alphaEquivalent (LamApp (LamAbs 0 (LamApp (LamApp (LamVar 0) (LamAbs 2 (LamVar 2))) (LamAbs 0 (LamVar 2)))) (LamAbs 0 (LamAbs 1 (LamVar 0)))) (letEnc (Fst (Pair (Abs (V 1) (Var 1)) (Abs Discard (Var 2)))))))
-
-c5tests = TestLabel "Challenge 5 Tests" (TestList [c5test1, c5test2])
+c5test3 = TestLabel "Var encodes properly" $ TestCase (assertEqual "alphaEquivalent (LamVar 1) (letEnc (Var 1))" True (alphaEquivalent (LamVar 1) (letEnc (Var 1))))
+c5test4 = TestLabel "Abs encodes properly" $ TestCase (assertEqual "alphaEquivalent (LamAbs 0 (LamVar 1)) (letEnc (Abs (V 0) (Var 1)))" True (alphaEquivalent (LamAbs 0 (LamVar 1)) (letEnc (Abs (V 0) (Var 1)))))
+c5test5 = TestLabel "Let encodes properly" $ TestCase (assertEqual "alphaEquivalent (LamApp (LamAbs 1 (LamVar 0)) (LamVar 1)) (letEnc (Let (V 1) (Var 0) (Var 1)))" True (alphaEquivalent (LamApp (LamAbs 3 (LamVar 3)) (LamVar 0)) (letEnc (Let (V 1) (Var 0) (Var 1)))))
+c5test6 = TestLabel "Pair encodes properly" $ TestCase (assertEqual "alphaEquivalent (LamAbs 1 (LamApp (LamApp (LamVar 1) (LamVar 0)) (LamVar 3))) (letEnc (Pair (Var 0) (Var 3)))" True (alphaEquivalent (LamAbs 1 (LamApp (LamApp (LamVar 1) (LamVar 0)) (LamVar 3))) (letEnc (Pair (Var 0) (Var 3)))))
+c5test7 = TestLabel "Fst encodes properly" $ TestCase (assertEqual "alphaEquivalent (LamApp (LamVar 2) (LamAbs 0 (LamAbs 1 (LamVar 0)))) (letEnc (Fst (Var 2)))" True (alphaEquivalent (LamApp (LamVar 2) (LamAbs 0 (LamAbs 1 (LamVar 0)))) (letEnc (Fst (Var 2)))))
+c5test8 = TestLabel "Snd encodes properly" $ TestCase (assertEqual "alphaEquivalent (LamApp (LamVar 2) (LamAbs 0 (LamAbs 1 (LamVar 1)))) (letEnc (Snd (Var 2)))" True (alphaEquivalent (LamApp (LamVar 2) (LamAbs 0 (LamAbs 1 (LamVar 1)))) (letEnc (Snd (Var 2)))))
+c5test9 = TestLabel "Discard doesn't interfere" $ TestCase (assertEqual "alphaEquivalent (LamAbs 1 (LamAbs 2 (LamAbs 3 (LamAbs 4 (LamAbs 5 (LamVar 6)))))) (letEnc (Abs Discard (Abs (V 5) (Abs (V 4) (Abs (V 3) (Abs (V 2) (Var 6)))))))" True (alphaEquivalent (LamAbs 1 (LamAbs 2 (LamAbs 3 (LamAbs 4 (LamAbs 5 (LamVar 6)))))) (letEnc (Abs Discard (Abs (V 5) (Abs (V 4) (Abs (V 3) (Abs (V 2) (Var 3)))))))))
+c5tests = TestLabel "Challenge 5 Tests" (TestList [c5test1, c5test2, c5test3, c5test4, c5test5, c5test6, c5test7])
 
 -- Challenge 6 Tests
 
 c6test1 = TestLabel "Spec example 1" $ TestCase (assertEqual "compareRedn (Let (V 3) (Pair (App (Abs (V 1) (App (Var 1) (Var 1))) (Abs (V 2) (Var 2))) (App (Abs (V 1) (App (Var 1) (Var 1))) (Abs (V 2) (Var 2)))) (Fst (Var 3))) 10" (6,8,4,6) (compareRedn (Let (V 3) (Pair (App (Abs (V 1) (App (Var 1) (Var 1))) (Abs (V 2) (Var 2))) (App (Abs (V 1) (App (Var 1) (Var 1))) (Abs (V 2) (Var 2)))) (Fst (Var 3))) 10))
 c6test2 = TestLabel "Spec example 2" $ TestCase (assertEqual "compareRedn (Let Discard (App (Abs (V 1) (Var 1)) (App (Abs (V 1) (Var 1)) (Abs (V 1) (Var 1)))) (Snd (Pair (App (Abs (V 1) (Var 1)) (Abs (V 1) (Var 1))) (Abs (V 1) (Var 1))))) 10" (5,7,2,4) (compareRedn (Let Discard (App (Abs (V 1) (Var 1)) (App (Abs (V 1) (Var 1)) (Abs (V 1) (Var 1)))) (Snd (Pair (App (Abs (V 1) (Var 1)) (Abs (V 1) (Var 1))) (Abs (V 1) (Var 1))))) 10))
 c6test3 = TestLabel "Spec example 3" $ TestCase (assertEqual "compareRedn (Let (V 2) (Let (V 1) (Abs (V 0) (App (Var 0) (Var 0))) (App (Var 1) (Var 1))) (Snd (Pair (Var 2) (Abs (V 1) (Var 1))))) 100" (100,100,2,4) (compareRedn (Let (V 2) (Let (V 1) (Abs (V 0) (App (Var 0) (Var 0))) (App (Var 1) (Var 1))) (Snd (Pair (Var 2) (Abs (V 1) (Var 1))))) 100))
+c6test4 = TestLabel "Something that requires no reducing takes no steps" $ TestCase (assertEqual "compareRedn (Var 1) 1" (0, 0, 0, 0) (compareRedn (Var 1) 1))
 
-c6tests = TestLabel "Challenge 6 Tests" (TestList [c6test1, c6test2, c6test3])
+c6tests = TestLabel "Challenge 6 Tests" (TestList [c6test1, c6test2, c6test3, c6test4])
 
 --
 tests = TestList [c1tests, c2tests, c3tests, c4tests, c5tests, c6tests]
