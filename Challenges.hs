@@ -377,8 +377,10 @@ countUp x fs | x `notElem` fs = x
              | otherwise = countUp (x + 1) fs
 
 letEnc :: LExpr -> LamExpr
-letEnc e = letEnc' (findFrees [] e) [(Discard, 0)] [] e
+letEnc e = letEnc' (unaffecting:frees) [(Discard, unaffecting)] [] e
   where
+    frees = findFrees [] e
+    unaffecting = countUp 0 frees
     letEnc' :: [Int] -> [Mapping] -> [Bind] -> LExpr -> LamExpr
     letEnc' fs ms bs (Var x) | V x `elem` bs = LamVar $ snd m'
                              | otherwise = LamVar x
@@ -390,10 +392,11 @@ letEnc e = letEnc' (findFrees [] e) [(Discard, 0)] [] e
     letEnc' fs ms bs e@(Let b e1 e2) | isJust firstMap = LamApp (LamAbs (snd firstMap') (letEnc' fs ms bs e2)) (letEnc' fs ms bs e1)
                                      where
                                        (firstMap, firstMap') = (findMap b ms, fromJust firstMap)
-    letEnc' fs ms bs e | isJust b = letEnc' fs ((b', countUp 1 fs):ms) (b':bs) e
+    letEnc' fs ms bs e | isJust b = letEnc' (mapTo:fs) ((b', mapTo):ms) (b':bs) e
                        where
                          (b, b') = (getBind e, fromJust b)
-    letEnc' fs ms bs (Pair e1 e2) = LamAbs 0 (LamApp (LamApp (LamVar 0) $ letEnc' fs ms bs e1) $ letEnc' fs ms bs e2)
+                         mapTo = countUp 0 fs
+    letEnc' fs ms bs (Pair e1 e2) = LamAbs unaffecting (LamApp (LamApp (LamVar unaffecting) $ letEnc' fs ms bs e1) $ letEnc' fs ms bs e2)
     letEnc' fs ms bs (Fst e) = LamApp (letEnc' fs ms bs e) (LamAbs 0 (LamAbs 1 (LamVar 0)))
     letEnc' fs ms bs (Snd e) = LamApp (letEnc' fs ms bs e) (LamAbs 0 (LamAbs 1 (LamVar 1)))
     letEnc' fs ms bs (App e1 e2) = LamApp (letEnc' fs ms bs e1) (letEnc' fs ms bs e2)
