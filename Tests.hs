@@ -57,9 +57,18 @@ c4test3 = TestLabel "Let syntax sugar" $ TestCase (assertEqual "parseLetx \"let 
 c4test4 = TestLabel "Let syntax sugar with Discard into an Abs" $ TestCase (assertEqual "parseLetx \"let x1 _ x3 = x3 in \\x3 -> x1 x3 x3\"" (Just (Let (V 1) (Abs Discard (Abs (V 3) (Var 3))) (Abs (V 3) (App (App (Var 1) (Var 3)) (Var 3))))) (parseLetx "let x1 _ x3 = x3 in \\x3 -> x1 x3 x3"))
 c4test5 = TestLabel "App requires space" $ TestCase (assertEqual "parseLetx \"x1x2\"" Nothing (parseLetx "x1x2"))
 c4test6 = TestLabel "Abs syntax sugar" $ TestCase (assertEqual "parseLetx \"\\x1 x2 x3 -> x4 x5\"" (Just (Abs (V 1) (Abs (V 2) (Abs (V 3) (App (Var 4) (Var 5)))))) (parseLetx "\\x1 x2 x3 -> x4 x5"))
-c4test7 = TestLabel "All expressions" $ TestCase (assertEqual "parseLetx \"x1 (let x2 _ = x3 in x4) fst ((x5, snd (\\x6 -> x7 x8))) let x9 = x10 in \\_ -> x11 x12\"" (Just $ App (App (App (Var 1) (Let (V 2) (Abs Discard (Var 3)) (Var 4))) (Fst (Pair (Var 5) (Snd (Abs (V 6) (App (Var 7) (Var 8))))))) (Let (V 9) (Var 10) (Abs Discard (Var 11)))) (parseLetx "x1 (let x2 _ = x3 in x4) fst ((x5, snd (\\x6 -> x7 x8))) let x9 = x10 in \\_ -> x11 x12"))
-
-c4tests = TestLabel "Challenge 4 Tests" (TestList [c4test1, c4test2, c4test3, c4test4, c4test5, c4test6])
+c4test7 = TestLabel "All expressions" $ TestCase (assertEqual "parseLetx \"x1 (let x2 _ = x3 in x4) fst ((x5, snd (\\x6 -> x7 x8))) let x9 = x10 in \\_ -> x11 x12\"" (Just $ App (App (App (Var 1) (Let (V 2) (Abs Discard (Var 3)) (Var 4))) (Fst (Pair (Var 5) (Snd (Abs (V 6) (App (Var 7) (Var 8))))))) (Let (V 9) (Var 10) (Abs Discard (App (Var 11) (Var 12))))) (parseLetx "x1 (let x2 _ = x3 in x4) fst ((x5, snd (\\x6 -> x7 x8))) let x9 = x10 in \\_ -> x11 x12"))
+c4test8 = TestLabel "Parses Var correctly" $ TestCase (assertEqual "parseLetx \"x1\"" (Just $ Var 1) (parseLetx "x1"))
+c4test9 = TestLabel "Parses Abs correctly" $ TestCase (assertEqual "parseLetx \"\\x1 -> x2\"" (Just $ Abs (V 1) (Var 2)) (parseLetx "\\x1 -> x2"))
+c4test10 = TestLabel "Parses Let correctly" $ TestCase (assertEqual "parseLetx \"let x1 = x2 in x3\"" (Just $ Let (V 1) (Var 2) (Var 3)) (parseLetx "let x1 = x2 in x3"))
+c4test11 = TestLabel "Parses Pair correctly" $ TestCase (assertEqual "parseLetx \"(x1, x2)\"" (Just $ Pair (Var 1) (Var 2)) (parseLetx "(x1, x2)"))
+c4test12 = TestLabel "Parses Fst correctly" $ TestCase (assertEqual "parseLetx \"fst (x1)\"" (Just $ Fst $ Var 1) (parseLetx "fst (x1)"))
+c4test13 = TestLabel "Parses Snd correctly" $ TestCase (assertEqual "parseLetx \"snd (x1)\"" (Just $ Snd $ Var 1) (parseLetx "snd (x1)"))
+c4test14 = TestLabel "Parses App correctly" $ TestCase (assertEqual "parseLetx \"x1 x2\"" (Just $ App (Var 1) (Var 2)) (parseLetx "x1 x2"))
+c4test15 = TestLabel "Partially correct expression doesn't parse" $ TestCase (assertEqual "parseLetx \"x1 x2 y3\"" Nothing (parseLetx "x1 x2 y3"))
+c4test16 = TestLabel "Completely incorrect expression doesn't parse" $ TestCase (assertEqual "parseLetx \"this is not correct\"" Nothing (parseLetx "this is not correct"))
+c4test17 = TestLabel "Spacing doesn't unnecessarily matter" $ TestCase (assertBool "parseLetx \" let     x1= x2   in x3  \" == parseLetx \"let x1 = x2 in x3\"" (parseLetx " let     x1= x2   in x3  " == parseLetx "let x1 = x2 in x3"))
+c4tests = TestLabel "Challenge 4 Tests" (TestList [c4test1, c4test2, c4test3, c4test4, c4test5, c4test6, c4test7, c4test8, c4test9, c4test10, c4test11, c4test12, c4test13, c4test14, c4test15, c4test16, c4test17 ])
 
 -- Challenge 5 Tests
 
