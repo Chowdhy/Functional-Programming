@@ -324,13 +324,11 @@ appExpr = do e <- tighterExpr
 
 fstExpr :: Parser LExpr
 fstExpr = do symbol "fst"
-             e <- token bracketedExpr
-             return (Fst e)
+             Fst <$> bracketedExpr
 
 sndExpr :: Parser LExpr
 sndExpr = do symbol "snd"
-             e <- token bracketedExpr
-             return (Snd e)
+             Snd <$> bracketedExpr
 
 pairExpr :: Parser LExpr
 pairExpr = do char '('
