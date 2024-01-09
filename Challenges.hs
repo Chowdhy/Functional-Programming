@@ -375,26 +375,32 @@ countUp x fs | x `notElem` fs = x
              | otherwise = countUp (x + 1) fs
 
 letEnc :: LExpr -> LamExpr
-letEnc e = letEnc' (unaffecting:frees) [(Discard, unaffecting)] [] e
+letEnc e = letEnc' frees [] [] e
   where
     frees = findFrees [] e
-    unaffecting = countUp 0 frees
+
     letEnc' :: [Int] -> [Mapping] -> [Bind] -> LExpr -> LamExpr
     letEnc' fs ms bs (Var x) | V x `elem` bs = LamVar $ snd m'
                              | otherwise = LamVar x
                              where
                                (m, m') = (find (\(x', _) -> V x == x') ms, fromJust m)
-    letEnc' fs ms bs e1@(Abs b e) | isJust firstMap = LamAbs (snd firstMap') (letEnc' fs ms bs e)
+    letEnc' fs ms bs e1@(Abs b e) | b == Discard = LamAbs a (letEnc' (a:fs) ms bs e)
+                                  | isJust firstMap = LamAbs (snd firstMap') (letEnc' fs ms bs e)
                                   where
+                                    a = countUp 0 fs
                                     (firstMap, firstMap') = (findMap b ms, fromJust firstMap)
-    letEnc' fs ms bs e@(Let b e1 e2) | isJust firstMap = LamApp (LamAbs (snd firstMap') (letEnc' fs ms bs e2)) (letEnc' fs ms bs e1)
+    letEnc' fs ms bs e@(Let b e1 e2) | b == Discard = LamApp (LamAbs a (letEnc' (a:fs) ms bs e2)) (letEnc' fs ms bs e1)
+                                     | isJust firstMap = LamApp (LamAbs (snd firstMap') (letEnc' fs ms bs e2)) (letEnc' fs ms bs e1)
                                      where
+                                       a = countUp 0 fs
                                        (firstMap, firstMap') = (findMap b ms, fromJust firstMap)
     letEnc' fs ms bs e | isJust b = letEnc' (mapTo:fs) ((b', mapTo):ms) (b':bs) e
                        where
                          (b, b') = (getBind e, fromJust b)
                          mapTo = countUp 0 fs
-    letEnc' fs ms bs (Pair e1 e2) = LamAbs unaffecting (LamApp (LamApp (LamVar unaffecting) $ letEnc' fs ms bs e1) $ letEnc' fs ms bs e2)
+    letEnc' fs ms bs (Pair e1 e2) = LamAbs unaffecting (LamApp (LamApp (LamVar unaffecting) $ letEnc' (unaffecting:fs) ms bs e1) $ letEnc' (unaffecting:fs) ms bs e2)
+      where
+        unaffecting = countUp 0 fs
     letEnc' fs ms bs (Fst e) = LamApp (letEnc' fs ms bs e) (LamAbs 0 (LamAbs 1 (LamVar 0)))
     letEnc' fs ms bs (Snd e) = LamApp (letEnc' fs ms bs e) (LamAbs 0 (LamAbs 1 (LamVar 1)))
     letEnc' fs ms bs (App e1 e2) = LamApp (letEnc' fs ms bs e1) (letEnc' fs ms bs e2)
