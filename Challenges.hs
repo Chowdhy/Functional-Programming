@@ -13,8 +13,8 @@ module Challenges (TileEdge(..),Tile(..),Puzzle,isPuzzleComplete,
 
 -- Import standard library and parsing definitions from Hutton 2016, Chapter 13
 import Parsing
-import Data.List (nub)
-import Data.Maybe (isJust,isNothing)
+import Data.List (nub, sort, find)
+import Data.Maybe (isJust,isNothing, fromJust)
 import Data.Char (isSpace)
 
 -- Challenge 1
@@ -364,16 +364,57 @@ bindV = do char 'x'
 data LamExpr = LamVar Int | LamApp LamExpr LamExpr | LamAbs Int LamExpr
                 deriving (Eq, Show, Read)
 
+type Mapping = (Bind, Int)
+
+firstElem :: Eq a => a -> [(a, b)] -> Bool
+firstElem _ [] = False
+firstElem v ((x, y):xs) | x == v = True
+                        | otherwise = firstElem v xs
+
+-- | Finds the first available non-free bind naming.
+countUp :: Int -> [Int] -> Int
+countUp x fs | x `notElem` fs = x
+             | otherwise = countUp (x + 1) fs
+
 letEnc :: LExpr -> LamExpr
-letEnc (Var x) = LamVar (x + 1)
-letEnc (Abs (V x) e) = LamAbs (x + 1) $ letEnc e
-letEnc (Abs Discard e) = LamAbs 0 $ letEnc e
-letEnc (Let (V x) e1 e2) = LamApp (LamAbs (x + 1) (letEnc e2)) (letEnc e1)
-letEnc (Let Discard e1 e2) = LamApp (LamAbs 0 $ letEnc e2) $ letEnc e1
-letEnc (Pair e1 e2) = LamAbs 0 (LamApp (LamApp (LamVar 0) $ letEnc e1) $ letEnc e2)
-letEnc (Fst e) = LamApp (letEnc e) (LamAbs 0 (LamAbs 1 (LamVar 0)))
-letEnc (Snd e) = LamApp (letEnc e) (LamAbs 0 (LamAbs 1 (LamVar 1)))
-letEnc (App e1 e2) = LamApp (letEnc e1) (letEnc e2)
+letEnc e = letEnc' (findFrees [] e) [(Discard, 0)] [] e
+  where
+    letEnc' :: [Int] -> [Mapping] -> [Bind] -> LExpr -> LamExpr
+    letEnc' fs ms bs (Var x) | V x `elem` bs = LamVar $ snd m'
+                             | otherwise = LamVar x
+                             where
+                               (m, m') = (find (\(x', _) -> V x == x') ms, fromJust m)
+    letEnc' fs ms bs e1@(Abs b e) | isJust firstMap = LamAbs (snd firstMap') (letEnc' fs ms bs e)
+                                  where
+                                    (firstMap, firstMap') = (findMap b ms, fromJust firstMap)
+    letEnc' fs ms bs e@(Let b e1 e2) | isJust firstMap = LamApp (LamAbs (snd firstMap') (letEnc' fs ms bs e2)) (letEnc' fs ms bs e1)
+                                     where
+                                       (firstMap, firstMap') = (findMap b ms, fromJust firstMap)
+    letEnc' fs ms bs e | isJust b = letEnc' fs ((b', countUp 1 fs):ms) (b':bs) e
+                       where
+                         (b, b') = (getBind e, fromJust b)
+    letEnc' fs ms bs (Pair e1 e2) = LamAbs 0 (LamApp (LamApp (LamVar 0) $ letEnc' fs ms bs e1) $ letEnc' fs ms bs e2)
+    letEnc' fs ms bs (Fst e) = LamApp (letEnc' fs ms bs e) (LamAbs 0 (LamAbs 1 (LamVar 0)))
+    letEnc' fs ms bs (Snd e) = LamApp (letEnc' fs ms bs e) (LamAbs 0 (LamAbs 1 (LamVar 1)))
+    letEnc' fs ms bs (App e1 e2) = LamApp (letEnc' fs ms bs e1) (letEnc' fs ms bs e2)
+
+    getBind :: LExpr -> Maybe Bind
+    getBind (Abs b _) = Just b
+    getBind (Let b _ _) = Just b
+    getBind _ = Nothing
+
+    findMap :: Bind -> [Mapping] -> Maybe Mapping
+    findMap b = find (\(b', _) -> b' == b)
+
+findFrees :: [Bind] -> LExpr -> [Int]
+findFrees bs (Var x) | V x `elem` bs = []
+                     | otherwise = [x]
+findFrees bs (Abs b e) = findFrees (b:bs) e
+findFrees bs (Let b e1 e2) = findFrees (b:bs) e2 ++ findFrees bs e1
+findFrees bs (Pair e1 e2) = findFrees bs e1 ++ findFrees bs e2
+findFrees bs (Fst e) = findFrees bs e
+findFrees bs (Snd e) = findFrees bs e
+findFrees bs (App e1 e2) = findFrees bs e1 ++ findFrees bs e2
 
 -- Challenge 6
 -- Compare Innermost Reduction for Let_x and its Lambda Encoding
@@ -464,8 +505,8 @@ letSubst (App e1 e2) y e = App (letSubst e1 y e) (letSubst e2 y e)
 letSubst (Fst e1) y e = Fst (letSubst e1 y e)
 letSubst (Snd e1) y e = Snd (letSubst e1 y e)
 letSubst (Pair e1 e2) y e = Pair (letSubst e1 y e) (letSubst e2 y e)
-letSubst (Let (V x) e1 e2) y e | x /= y && not (letFree x e) = Let (V x) e1 (letSubst e2 y e)
-                               | x /= y && letFree x e = let x' = letRename x e2 in letSubst (Let (V x') e1 (letSubst e2 x (Var x'))) y e
+letSubst (Let (V x) e1 e2) y e | x /= y && not (letFree x e) = Let (V x) (letSubst e1 y e) (letSubst e2 y e)
+                               | x /= y && letFree x e = let x' = letRename x e2 in letSubst (Let (V x') (letSubst e1 x (Var x')) (letSubst e2 x (Var x'))) y e
                                | otherwise = Let (V x) e1 e2
 
 isLetValue :: LExpr -> Bool
