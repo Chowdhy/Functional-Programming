@@ -46,8 +46,16 @@ c3test2 = TestLabel "Spec example 2" $ TestCase (assertEqual "prettyPrint (Let D
 c3test3 = TestLabel "Spec example 3" $ TestCase (assertEqual "prettyPrint (Abs (V 1) (Abs Discard (Abs (V 2) (App (Var 2) (Var 1)))))" "\\x1_x2->x2x1" (rmSpace (prettyPrint (Abs (V 1) (Abs Discard (Abs (V 2) (App (Var 2) (Var 1))))))))
 c3test4 = TestLabel "Spec example 4" $ TestCase (assertEqual "prettyPrint (App (Var 2) (Abs (V 1) (Abs Discard (Var 1))))" "x2\\x1_->x1" (rmSpace (prettyPrint (App (Var 2) (Abs (V 1) (Abs Discard (Var 1)))))))
 c3test5 = TestLabel "Let syntax sugar" $ TestCase (assertEqual "prettyPrint (Let (V 1) (Abs (V 2) (Abs Discard (Var 3))) (App (Var 4) (Var 5)))" "letx1x2_=x3inx4x5" (rmSpace (prettyPrint (Let (V 1) (Abs (V 2) (Abs Discard (Var 3))) (App (Var 4) (Var 5))))))
+c3test6 = TestLabel "Prints Var correctly" $ TestCase (assertEqual "prettyPrint (Var 1)" "x1" (rmSpace $ prettyPrint (Var 1)))
+c3test7 = TestLabel "Prints Abs correctly" $ TestCase (assertEqual "prettyPrint (Abs (V 1) (Var 2))" "\\x1->x2" (rmSpace $ prettyPrint (Abs (V 1) (Var 2))))
+c3test8 = TestLabel "Prints Let correctly" $ TestCase (assertEqual "prettyPrint (Let (V 1) (Var 2) (Var 3))" "letx1=x2inx3" (rmSpace $ prettyPrint (Let (V 1) (Var 2) (Var 3))))
+c3test9 = TestLabel "Prints Pair correctly" $ TestCase (assertEqual "prettyPrint (Pair (Var 1) (Var 2))" "(x1,x2)" (rmSpace $ prettyPrint (Pair (Var 1) (Var 2))))
+c3test10 = TestLabel "Prints Fst correctly" $ TestCase (assertEqual "prettyPrint (Fst (Var 1))" "fst(x1)" (rmSpace $ prettyPrint (Fst (Var 1))))
+c3test11 = TestLabel "Prints Snd correctly" $ TestCase (assertEqual "prettyPrint (Snd (Var 1))" "snd(x1)" (rmSpace $ prettyPrint (Snd (Var 1))))
+c3test12 = TestLabel "Prints App correctly" $ TestCase (assertEqual "prettyPrint (App (Var 1) (Var 2))" "x1x2" (rmSpace $ prettyPrint (App (Var 1) (Var 2))))
 
-c3tests = TestLabel "Challenge 3 Tests" (TestList [c3test1, c3test2, c3test3, c3test4, c3test5])
+
+c3tests = TestLabel "Challenge 3 Tests" (TestList [c3test1, c3test2, c3test3, c3test4, c3test5, c3test6, c3test7, c3test8, c3test9, c3test10, c3test11, c3test12])
 
 -- Challenge 4 Tests
 
